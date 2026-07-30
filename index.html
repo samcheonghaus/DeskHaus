@@ -153,11 +153,12 @@
 <body>
 
 <header>
-  <div class="brand"><div class="mark">DH</div><div><b>DeskHaus</b> <span>· 글과 그림, 한 자리에서</span></div></div>
+  <div class="brand"><div class="mark">DH</div><div><b>DeskHaus</b> <span data-i18n="brandSub">· 글과 그림, 한 자리에서</span></div></div>
   <div class="tabs">
-    <div class="tab active" id="tabDoc"><span class="dot"></span>글</div>
-    <div class="tab" id="tabImg"><span class="dot"></span>그림</div>
+    <div class="tab active" id="tabDoc"><span class="dot"></span><span data-i18n="tabDoc">글</span></div>
+    <div class="tab" id="tabImg"><span class="dot"></span><span data-i18n="tabImg">그림</span></div>
   </div>
+  <button id="langBtn" title="Language / 언어" style="margin-left:auto; margin-bottom:12px;">EN</button>
 </header>
 
 <!-- ══ 글 모드 툴바 ══ -->
@@ -178,49 +179,49 @@
   <button class="icon" data-cmd="insertUnorderedList" title="글머리 기호">•≡</button>
   <button class="icon" data-cmd="insertOrderedList" title="번호 목록">1≡</button>
   <div class="sep"></div>
-  <button id="btnTable">표 삽입</button>
-  <button id="btnDocImg">이미지 삽입</button>
+  <button id="btnTable" data-i18n="btnTable">표 삽입</button>
+  <button id="btnDocImg" data-i18n="btnDocImg">이미지 삽입</button>
   <span id="tableTools" style="display:none; gap:5px; align-items:center;">
     <span class="sep"></span>
-    <label class="small">표 편집</label>
-    <button id="tAddRow" title="현재 행 아래에 행 추가">＋행</button>
-    <button id="tDelRow" title="현재 행 삭제">－행</button>
-    <button id="tAddCol" title="현재 열 오른쪽에 열 추가">＋열</button>
-    <button id="tDelCol" title="현재 열 삭제">－열</button>
-    <button id="tSumRow" title="표 아래에 각 열의 합계 행 추가 (다시 누르면 재계산)">Σ 아래 합계</button>
-    <button id="tSumCol" title="표 오른쪽에 각 행의 합계 열 추가 (다시 누르면 재계산)">Σ 우측 합계</button>
-    <button id="tExportXlsx" title="이 표를 엑셀 파일(.xlsx)로 저장">엑셀로 저장</button>
+    <label class="small" data-i18n="lblTableEdit">표 편집</label>
+    <button id="tAddRow" data-i18n-title="tAddRowT" data-i18n="tAddRow" title="현재 행 아래에 행 추가">＋행</button>
+    <button id="tDelRow" data-i18n-title="tDelRowT" data-i18n="tDelRow" title="현재 행 삭제">－행</button>
+    <button id="tAddCol" data-i18n-title="tAddColT" data-i18n="tAddCol" title="현재 열 오른쪽에 열 추가">＋열</button>
+    <button id="tDelCol" data-i18n-title="tDelColT" data-i18n="tDelCol" title="현재 열 삭제">－열</button>
+    <button id="tSumRow" data-i18n-title="tSumRowT" data-i18n="tSumRow" title="표 아래에 각 열의 합계 행 추가 (다시 누르면 재계산)">Σ 아래 합계</button>
+    <button id="tSumCol" data-i18n-title="tSumColT" data-i18n="tSumCol" title="표 오른쪽에 각 행의 합계 열 추가 (다시 누르면 재계산)">Σ 우측 합계</button>
+    <button id="tExportXlsx" data-i18n-title="tExportXlsxT" data-i18n="tExportXlsx" title="이 표를 엑셀 파일(.xlsx)로 저장">엑셀로 저장</button>
   </span>
   <div class="sep"></div>
   <button class="icon" data-cmd="undo" title="실행 취소">↶</button>
   <button class="icon" data-cmd="redo" title="다시 실행">↷</button>
   <div class="sep"></div>
-  <button id="btnNewDoc">새 문서</button>
-  <button id="btnOpenDoc">열기</button>
-  <button id="btnImportXlsx" title="엑셀(.xlsx) 또는 CSV 파일을 표로 불러옵니다">엑셀·CSV 열기</button>
-  <button id="btnSaveDoc" class="primary">저장 (.html)</button>
-  <button id="btnPrint">인쇄 / PDF</button>
+  <button id="btnNewDoc" data-i18n="btnNewDoc">새 문서</button>
+  <button id="btnOpenDoc" data-i18n="btnOpenDoc">열기</button>
+  <button id="btnImportXlsx" data-i18n-title="btnImportXlsxT" data-i18n="btnImportXlsx" title="엑셀(.xlsx) 또는 CSV 파일을 표로 불러옵니다">엑셀·CSV 열기</button>
+  <button id="btnSaveDoc" class="primary" data-i18n="btnSaveDoc">저장 (.html)</button>
+  <button id="btnPrint" data-i18n="btnPrint">인쇄 / PDF</button>
 </div>
 
 <!-- ══ 그림 모드 툴바 ══ -->
 <div class="toolbar" id="tbImg" style="display:none;">
-  <button id="btnNewCanvas">새 캔버스</button>
-  <button id="btnAddImg" class="primary">이미지 추가</button>
-  <button id="btnAddText">텍스트 추가</button>
+  <button id="btnNewCanvas" data-i18n="btnNewCanvas">새 캔버스</button>
+  <button id="btnAddImg" class="primary" data-i18n="btnAddImg">이미지 추가</button>
+  <button id="btnAddText" data-i18n="btnAddText">텍스트 추가</button>
   <div class="sep"></div>
-  <button id="btnCrop">자르기</button>
-  <button id="btnCanvasSize">캔버스 크기</button>
-  <label class="small">배경</label>
-  <select id="bgSel"><option value="t">투명</option><option value="c">색상</option></select>
+  <button id="btnCrop" data-i18n="btnCrop">자르기</button>
+  <button id="btnCanvasSize" data-i18n="btnCanvasSize">캔버스 크기</button>
+  <label class="small" data-i18n="lblBg">배경</label>
+  <select id="bgSel"><option value="t" data-i18n="optTransparent">투명</option><option value="c" data-i18n="optColor">색상</option></select>
   <input type="color" id="bgColor" value="#FFFFFF" title="배경 색" style="display:none;">
   <div class="sep"></div>
-  <label class="small">확대</label>
+  <label class="small" data-i18n="lblZoom">확대</label>
   <select id="zoomSel">
     <option value="0.5">50%</option><option value="0.75">75%</option>
     <option value="1" selected>100%</option><option value="1.5">150%</option><option value="2">200%</option>
   </select>
   <div class="sep"></div>
-  <label class="small">저장 형식</label>
+  <label class="small" data-i18n="lblFmt">저장 형식</label>
   <select id="fmtSel">
     <option value="png">PNG</option><option value="jpeg">JPG</option><option value="webp">WebP</option>
     <option value="ico">ICO</option><option value="gif">GIF</option>
@@ -229,8 +230,8 @@
     <option value="16">16px</option><option value="32" selected>32px</option><option value="48">48px</option>
     <option value="64">64px</option><option value="128">128px</option><option value="256">256px</option>
   </select>
-  <button id="btnExport" class="primary">내보내기</button>
-  <button id="btnApplyDoc" style="display:none;">문서에 적용 ↩</button>
+  <button id="btnExport" class="primary" data-i18n="btnExport">내보내기</button>
+  <button id="btnApplyDoc" style="display:none;" data-i18n="btnApplyDoc">문서에 적용 ↩</button>
 </div>
 
 <main>
@@ -255,17 +256,17 @@
         </div>
       </div>
       <aside>
-        <h3>레이어 (위 = 앞)</h3>
+        <h3 data-i18n="layerTitle">레이어 (위 = 앞)</h3>
         <div id="layerList"></div>
         <div id="layerCtrl">
-          <div class="row"><label class="small" style="width:52px;">투명도</label><input type="range" id="opRange" min="0" max="100" value="100"><span id="opVal" class="small" style="width:34px;text-align:right;">100%</span></div>
+          <div class="row"><label class="small" style="width:52px;" data-i18n="lblOpacity">투명도</label><input type="range" id="opRange" min="0" max="100" value="100"><span id="opVal" class="small" style="width:34px;text-align:right;">100%</span></div>
           <div class="row">
-            <button id="lyUp" title="앞으로">▲ 앞</button><button id="lyDown" title="뒤로">▼ 뒤</button>
-            <button id="lyDel" class="danger">삭제</button>
+            <button id="lyUp" data-i18n-title="lyUpT" data-i18n="lyUp" title="앞으로">▲ 앞</button><button id="lyDown" data-i18n-title="lyDownT" data-i18n="lyDown" title="뒤로">▼ 뒤</button>
+            <button id="lyDel" class="danger" data-i18n="lyDel">삭제</button>
           </div>
           <div class="row">
-            <button id="lyRot" title="시계 방향 90도 회전">↻ 회전</button>
-            <button id="lyFlip" title="좌우 반전">⇋ 반전</button>
+            <button id="lyRot" data-i18n-title="lyRotT" data-i18n="lyRot" title="시계 방향 90도 회전">↻ 회전</button>
+            <button id="lyFlip" data-i18n-title="lyFlipT" data-i18n="lyFlip" title="좌우 반전">⇋ 반전</button>
           </div>
         </div>
       </aside>
@@ -274,10 +275,10 @@
 </main>
 
 <footer>
-  <span id="statMode">글 모드</span>
+  <span id="statMode" data-i18n="statModeDoc">글 모드</span>
   <span class="calc" id="statCalc"></span>
   <span id="statMsg"></span>
-  <span class="hint" id="statHint">숫자를 드래그 선택하면 합계·평균이 여기에 표시됩니다</span>
+  <span class="hint" id="statHint" data-i18n="statHintDoc">숫자를 드래그 선택하면 합계·평균이 여기에 표시됩니다</span>
 </footer>
 
 <!-- 숨김 파일 입력 -->
@@ -289,42 +290,161 @@
 <!-- 확인 대화상자 -->
 <dialog id="dlgConfirm">
   <h4 id="cfMsg">계속할까요?</h4>
-  <div class="btns"><button id="cfNo">취소</button><button class="primary" id="cfYes">확인</button></div>
+  <div class="btns"><button id="cfNo" data-i18n="btnCancel">취소</button><button class="primary" id="cfYes" data-i18n="btnOk">확인</button></div>
 </dialog>
 
 <!-- 파일 이름 대화상자 -->
 <dialog id="dlgSave">
-  <h4>저장할 파일 이름</h4>
+  <h4 data-i18n="dlgSaveTitle">저장할 파일 이름</h4>
   <div class="frow"><label>이름</label><input type="text" id="saveName"></div>
-  <div class="btns"><button id="svCancel">취소</button><button class="primary" id="svOk">저장</button></div>
+  <div class="btns"><button id="svCancel" data-i18n="btnCancel">취소</button><button class="primary" id="svOk" data-i18n="btnSave">저장</button></div>
 </dialog>
 
 <!-- 표 삽입 대화상자 -->
 <dialog id="dlgTable">
-  <h4>표 삽입</h4>
-  <div class="frow"><label>행</label><input type="number" id="tRows" value="3" min="1" max="50"></div>
-  <div class="frow"><label>열</label><input type="number" id="tCols" value="3" min="1" max="20"></div>
-  <div class="btns"><button onclick="dlgTable.close()">취소</button><button class="primary" id="tOk">삽입</button></div>
+  <h4 data-i18n="dlgTableTitle">표 삽입</h4>
+  <div class="frow"><label data-i18n="lblRows">행</label><input type="number" id="tRows" value="3" min="1" max="50"></div>
+  <div class="frow"><label data-i18n="lblCols">열</label><input type="number" id="tCols" value="3" min="1" max="20"></div>
+  <div class="btns"><button onclick="dlgTable.close()" data-i18n="btnCancel">취소</button><button class="primary" id="tOk" data-i18n="btnInsert">삽입</button></div>
 </dialog>
 
 <!-- 텍스트 추가 대화상자 -->
 <dialog id="dlgText">
-  <h4>텍스트 레이어 추가</h4>
-  <div class="frow"><label>내용</label><input type="text" id="txContent" value="텍스트"></div>
-  <div class="frow"><label>크기</label><input type="number" id="txSize" value="48" min="8" max="400"></div>
-  <div class="frow"><label>색상</label><input type="color" id="txColor" value="#22262B"></div>
-  <div class="btns"><button onclick="dlgText.close()">취소</button><button class="primary" id="txOk">추가</button></div>
+  <h4 data-i18n="dlgTextTitle">텍스트 레이어 추가</h4>
+  <div class="frow"><label data-i18n="lblContent">내용</label><input type="text" id="txContent" value="텍스트"></div>
+  <div class="frow"><label data-i18n="lblSize">크기</label><input type="number" id="txSize" value="48" min="8" max="400"></div>
+  <div class="frow"><label data-i18n="lblColor">색상</label><input type="color" id="txColor" value="#22262B"></div>
+  <div class="btns"><button onclick="dlgText.close()" data-i18n="btnCancel">취소</button><button class="primary" id="txOk" data-i18n="btnAdd">추가</button></div>
 </dialog>
 
 <!-- 캔버스 크기 대화상자 -->
 <dialog id="dlgCanvas">
-  <h4>캔버스 크기</h4>
-  <div class="frow"><label>너비</label><input type="number" id="cW" value="1000" min="16" max="6000"></div>
-  <div class="frow"><label>높이</label><input type="number" id="cH" value="700" min="16" max="6000"></div>
-  <div class="btns"><button onclick="dlgCanvas.close()">취소</button><button class="primary" id="cOk">적용</button></div>
+  <h4 data-i18n="dlgCanvasTitle">캔버스 크기</h4>
+  <div class="frow"><label data-i18n="lblWidth">너비</label><input type="number" id="cW" value="1000" min="16" max="6000"></div>
+  <div class="frow"><label data-i18n="lblHeight">높이</label><input type="number" id="cH" value="700" min="16" max="6000"></div>
+  <div class="btns"><button onclick="dlgCanvas.close()" data-i18n="btnCancel">취소</button><button class="primary" id="cOk" data-i18n="btnApply">적용</button></div>
 </dialog>
 
 <script>
+/* ═══════════════ 다국어 (EN / KO) ═══════════════ */
+const I18N = {
+  ko: {
+    tabDoc:'글', tabImg:'그림', brandSub:'· 글과 그림, 한 자리에서',
+    btnTable:'표 삽입', btnDocImg:'이미지 삽입', lblTableEdit:'표 편집',
+    tAddRow:'＋행', tDelRow:'－행', tAddCol:'＋열', tDelCol:'－열',
+    tSumRow:'Σ 아래 합계', tSumCol:'Σ 우측 합계', tExportXlsx:'엑셀로 저장',
+    btnNewDoc:'새 문서', btnOpenDoc:'열기', btnImportXlsx:'엑셀·CSV 열기',
+    btnSaveDoc:'저장 (.html)', btnPrint:'인쇄 / PDF',
+    btnNewCanvas:'새 캔버스', btnAddImg:'이미지 추가', btnAddText:'텍스트 추가',
+    btnCrop:'자르기', btnCanvasSize:'캔버스 크기', lblBg:'배경', lblZoom:'확대', lblFmt:'저장 형식',
+    btnExport:'내보내기', btnApplyDoc:'문서에 적용 ↩',
+    layerTitle:'레이어 (위 = 앞)', lblOpacity:'투명도',
+    lyUp:'▲ 앞', lyDown:'▼ 뒤', lyDel:'삭제', lyRot:'↻ 회전', lyFlip:'⇋ 반전',
+    statModeDoc:'글 모드', statModeImg:'그림 모드',
+    statHintDoc:'숫자를 드래그 선택하면 합계·평균이 여기에 표시됩니다',
+    statHintImg:'레이어를 클릭해 이동, 모서리 사각형으로 크기 조절',
+    dlgSaveTitle:'저장할 파일 이름', dlgTableTitle:'표 삽입', dlgTextTitle:'텍스트 레이어 추가', dlgCanvasTitle:'캔버스 크기',
+    btnCancel:'취소', btnSave:'저장', btnInsert:'삽입', btnAdd:'추가', btnApply:'적용', btnOk:'확인',
+    lblRows:'행', lblCols:'열', lblContent:'내용', lblSize:'크기', lblColor:'색상', lblWidth:'너비', lblHeight:'높이',
+    optTransparent:'투명', optColor:'색상',
+    tAddRowT:'현재 행 아래에 행 추가', tDelRowT:'현재 행 삭제',
+    tAddColT:'현재 열 오른쪽에 열 추가', tDelColT:'현재 열 삭제',
+    tSumRowT:'표 아래에 각 열의 합계 행 추가 (다시 누르면 재계산)',
+    tSumColT:'표 오른쪽에 각 행의 합계 열 추가 (다시 누르면 재계산)',
+    tExportXlsxT:'이 표를 엑셀 파일(.xlsx)로 저장',
+    btnImportXlsxT:'엑셀(.xlsx) 또는 CSV 파일을 표로 불러옵니다',
+    lyUpT:'앞으로', lyDownT:'뒤로', lyRotT:'시계 방향 90도 회전', lyFlipT:'좌우 반전',
+    /* JS 메시지 */
+    mSaved:'저장했습니다: ', mSavedShort:'저장했습니다.', mDocSaved:'문서를 저장했습니다.',
+    mDocOpened:'문서를 불러왔습니다.', mNewDoc:'새 문서를 시작합니다.', mNewCanvas:'새 캔버스를 시작합니다.',
+    mNoLayers:'내보낼 레이어가 없습니다. 먼저 이미지나 텍스트를 추가하세요.',
+    mExported:'내보냈습니다.', mExportFail:'내보내기 실패: ',
+    mGifMaking:'GIF 생성 중… (배경은 흰색으로 저장됩니다)',
+    mGifFail:'GIF 모듈을 불러오지 못했습니다 (인터넷 연결 필요)',
+    mSelImgLayer:'이미지 레이어를 선택하세요.',
+    mClickTable:'표 안을 클릭한 뒤 사용하세요.',
+    mSumRowDone:'아래 합계를 추가했습니다. 값을 고친 뒤 버튼을 다시 누르면 재계산됩니다.',
+    mSumColDone:'우측 합계를 추가했습니다. 값을 고친 뒤 버튼을 다시 누르면 재계산됩니다.',
+    mXlsxNoMod:'엑셀 모듈을 불러오지 못했습니다 (인터넷 연결 필요).',
+    mXlsxEmpty:'빈 파일이거나 표를 찾지 못했습니다.',
+    mXlsxImported:' 을(를) 표로 불러왔습니다.', mImportFail:'불러오기 실패: ',
+    mCropHint:'자를 영역을 드래그한 뒤 Enter 키로 확정하세요.', mCropped:'잘라냈습니다.',
+    mApplyDocHint:'편집 후 "문서에 적용"을 누르면 원래 자리의 이미지가 교체됩니다.',
+    mAppliedDoc:'문서에 적용했습니다.', mNoApplyTarget:'적용할 문서 이미지가 없습니다.',
+    cfNewDoc:'현재 문서 내용이 모두 지워집니다. 저장하지 않은 내용은 복구할 수 없습니다. 새 문서를 시작할까요?',
+    cfNewCanvas:'현재 레이어가 모두 지워집니다. 내보내지 않은 작업은 복구할 수 없습니다. 새 캔버스를 시작할까요?',
+    calcCount:'개수', calcSum:'합계', calcAvg:'평균',
+    layerRename:'더블클릭하여 이름 변경', layerRenamePrompt:'레이어 이름',
+    thTitle:'제목', sumLabel:'합계', txtDefault:'텍스트', imgLayer:'이미지', docImgName:'문서 이미지',
+    fnDoc:'문서_', fnImg:'이미지_', fnIcon:'아이콘_', fnTable:'표_',
+  },
+  en: {
+    tabDoc:'Text', tabImg:'Image', brandSub:'· writing and images, in one place',
+    btnTable:'Insert table', btnDocImg:'Insert image', lblTableEdit:'Edit table',
+    tAddRow:'+Row', tDelRow:'−Row', tAddCol:'+Col', tDelCol:'−Col',
+    tSumRow:'Σ Sum below', tSumCol:'Σ Sum right', tExportXlsx:'Save as Excel',
+    btnNewDoc:'New', btnOpenDoc:'Open', btnImportXlsx:'Open Excel/CSV',
+    btnSaveDoc:'Save (.html)', btnPrint:'Print / PDF',
+    btnNewCanvas:'New canvas', btnAddImg:'Add image', btnAddText:'Add text',
+    btnCrop:'Crop', btnCanvasSize:'Canvas size', lblBg:'Background', lblZoom:'Zoom', lblFmt:'Format',
+    btnExport:'Export', btnApplyDoc:'Apply to document ↩',
+    layerTitle:'Layers (top = front)', lblOpacity:'Opacity',
+    lyUp:'▲ Up', lyDown:'▼ Down', lyDel:'Delete', lyRot:'↻ Rotate', lyFlip:'⇋ Flip',
+    statModeDoc:'Text mode', statModeImg:'Image mode',
+    statHintDoc:'Select numbers by dragging to see sum and average here',
+    statHintImg:'Click a layer to move it; drag the corner square to resize',
+    dlgSaveTitle:'File name to save', dlgTableTitle:'Insert table', dlgTextTitle:'Add text layer', dlgCanvasTitle:'Canvas size',
+    btnCancel:'Cancel', btnSave:'Save', btnInsert:'Insert', btnAdd:'Add', btnApply:'Apply', btnOk:'OK',
+    lblRows:'Rows', lblCols:'Cols', lblContent:'Text', lblSize:'Size', lblColor:'Color', lblWidth:'Width', lblHeight:'Height',
+    optTransparent:'Transparent', optColor:'Color',
+    tAddRowT:'Add a row below the current row', tDelRowT:'Delete the current row',
+    tAddColT:'Add a column to the right', tDelColT:'Delete the current column',
+    tSumRowT:'Add a row of column sums below (click again to recalculate)',
+    tSumColT:'Add a column of row sums on the right (click again to recalculate)',
+    tExportXlsxT:'Save this table as an Excel file (.xlsx)',
+    btnImportXlsxT:'Open an Excel (.xlsx) or CSV file as a table',
+    lyUpT:'Bring forward', lyDownT:'Send backward', lyRotT:'Rotate 90° clockwise', lyFlipT:'Flip horizontally',
+    mSaved:'Saved: ', mSavedShort:'Saved.', mDocSaved:'Document saved.',
+    mDocOpened:'Document opened.', mNewDoc:'Started a new document.', mNewCanvas:'Started a new canvas.',
+    mNoLayers:'No layers to export. Add an image or text first.',
+    mExported:'Exported.', mExportFail:'Export failed: ',
+    mGifMaking:'Creating GIF… (background is saved as white)',
+    mGifFail:'Could not load the GIF module (internet required)',
+    mSelImgLayer:'Please select an image layer.',
+    mClickTable:'Click inside a table first.',
+    mSumRowDone:'Added a sum row below. Edit values and click again to recalculate.',
+    mSumColDone:'Added a sum column on the right. Edit values and click again to recalculate.',
+    mXlsxNoMod:'Could not load the Excel module (internet required).',
+    mXlsxEmpty:'Empty file, or no table found.',
+    mXlsxImported:' imported as a table.', mImportFail:'Import failed: ',
+    mCropHint:'Drag the area to crop, then press Enter to confirm.', mCropped:'Cropped.',
+    mApplyDocHint:'After editing, click "Apply to document" to replace the original image.',
+    mAppliedDoc:'Applied to the document.', mNoApplyTarget:'No document image to apply to.',
+    cfNewDoc:'The current document will be cleared. Unsaved content cannot be recovered. Start a new document?',
+    cfNewCanvas:'All current layers will be cleared. Unexported work cannot be recovered. Start a new canvas?',
+    calcCount:'Count', calcSum:'Sum', calcAvg:'Avg',
+    layerRename:'Double-click to rename', layerRenamePrompt:'Layer name',
+    thTitle:'Header', sumLabel:'Sum', txtDefault:'Text', imgLayer:'Image', docImgName:'Document image',
+    fnDoc:'document_', fnImg:'image_', fnIcon:'icon_', fnTable:'table_',
+  }
+};
+let LANG = 'ko';
+const T = k => (I18N[LANG][k] !== undefined ? I18N[LANG][k] : k);
+function applyLang(){
+  document.documentElement.lang = LANG;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const k = el.getAttribute('data-i18n'); if(I18N[LANG][k]!==undefined) el.textContent = I18N[LANG][k];
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach(el=>{
+    const k = el.getAttribute('data-i18n-title'); if(I18N[LANG][k]!==undefined) el.title = I18N[LANG][k];
+  });
+  /* 상태바 모드/힌트는 현재 모드에 맞게 */
+  const doc = document.getElementById('modeDoc').classList.contains('active');
+  document.getElementById('statMode').textContent = doc ? T('statModeDoc') : T('statModeImg');
+  document.getElementById('statHint').textContent = doc ? T('statHintDoc') : T('statHintImg');
+  document.getElementById('langBtn').textContent = LANG==='ko' ? 'EN' : '한국어';
+}
+
 /* ═══════════════ 공통 ═══════════════ */
 const $ = id => document.getElementById(id);
 const msg = t => { $('statMsg').textContent = t; setTimeout(()=>{ if($('statMsg').textContent===t) $('statMsg').textContent=''; }, 4000); };
@@ -335,7 +455,7 @@ async function download(blob, name){
       const path = await Neutralino.os.showSaveDialog('저장', {defaultPath: name});
       if(!path) return;
       await Neutralino.filesystem.writeBinaryFile(path, await blob.arrayBuffer());
-      msg('저장했습니다: ' + path);
+      msg(T('mSaved') + path);
       return;
     }catch(e){ /* 실패 시 다음 방식으로 */ }
   }
@@ -349,7 +469,7 @@ async function download(blob, name){
       });
       const w = await h.createWritable();
       await w.write(blob); await w.close();
-      msg('저장했습니다.');
+      msg(T('mSavedShort'));
       return;
     }catch(e){
       if(e.name === 'AbortError') return;  /* 사용자가 취소 */
@@ -410,8 +530,8 @@ function setMode(m){
   $('modeImg').classList.toggle('active', !doc);
   $('tbDoc').style.display = doc?'flex':'none';
   $('tbImg').style.display = doc?'none':'flex';
-  $('statMode').textContent = doc?'글 모드':'그림 모드';
-  $('statHint').textContent = doc?'숫자를 드래그 선택하면 합계·평균이 여기에 표시됩니다':'레이어를 클릭해 이동, 모서리 사각형으로 크기 조절';
+  $('statMode').textContent = doc?T('statModeDoc'):T('statModeImg');
+  $('statHint').textContent = doc?T('statHintDoc'):T('statHintImg');
   if(!doc) render();
 }
 $('tabDoc').onclick = ()=>setMode('doc');
@@ -429,7 +549,7 @@ $('fontColor').oninput = e=>{ editor.focus(); document.execCommand('foreColor', 
 $('btnTable').onclick = ()=> $('dlgTable').showModal();
 $('tOk').onclick = ()=>{
   const r = +$('tRows').value||3, c = +$('tCols').value||3;
-  let h = '<table><tr>' + '<th>제목</th>'.repeat(c) + '</tr>';
+  let h = '<table><tr>' + `<th>${T('thTitle')}</th>`.repeat(c) + '</tr>';
   for(let i=0;i<r;i++) h += '<tr>' + '<td><br></td>'.repeat(c) + '</tr>';
   h += '</table><p><br></p>';
   $('dlgTable').close(); editor.focus();
@@ -469,7 +589,7 @@ function updateCalc(){
   const nums = (txt.match(/-?\d[\d,]*(?:\.\d+)?/g)||[]).map(v=>parseFloat(v.replace(/,/g,'')));
   if(nums.length >= 2){
     const sum = nums.reduce((a,b)=>a+b,0);
-    el.textContent = `개수 ${nums.length} · 합계 ${(+sum.toFixed(4)).toLocaleString()} · 평균 ${(+(sum/nums.length).toFixed(2)).toLocaleString()}`;
+    el.textContent = `${T('calcCount')} ${nums.length} · ${T('calcSum')} ${(+sum.toFixed(4)).toLocaleString()} · ${T('calcAvg')} ${(+(sum/nums.length).toFixed(2)).toLocaleString()}`;
   } else el.textContent = '';
 }
 document.addEventListener('selectionchange', ()=>{ updateCalc(); syncTableTools(); });
@@ -514,7 +634,7 @@ $('tAddCol').onclick = ()=>{
   [...tb.rows].forEach(r=>{
     const ref = r.cells[Math.min(idx, r.cells.length-1)]; if(!ref) return;
     const el = document.createElement(ref.tagName === 'TH' ? 'th' : 'td');
-    el.innerHTML = ref.tagName === 'TH' ? '제목' : '<br>';
+    el.innerHTML = ref.tagName === 'TH' ? T('thTitle') : '<br>';
     ref.after(el);
   });
 };
@@ -527,7 +647,7 @@ $('tDelCol').onclick = ()=>{
 };
 /* Σ 아래 합계: 각 열의 숫자를 더한 행을 표 맨 아래에 추가 (재클릭 시 재계산) */
 $('tSumRow').onclick = ()=>{
-  const c = curCell(); if(!c){ msg('표 안을 클릭한 뒤 사용하세요.'); return; }
+  const c = curCell(); if(!c){ msg(T('mClickTable')); return; }
   const tb = c.closest('table');
   tb.querySelectorAll('tr[data-sum]').forEach(r=>r.remove());
   const rows = [...tb.rows];
@@ -541,22 +661,22 @@ $('tSumRow').onclick = ()=>{
     });
     const td = document.createElement('td');
     td.style.background = '#EDF2FA'; td.style.fontWeight = '600';
-    td.innerHTML = found ? (+sum.toFixed(4)).toLocaleString() : (i===0 ? '합계' : '<br>');
+    td.innerHTML = found ? (+sum.toFixed(4)).toLocaleString() : (i===0 ? T('sumLabel') : '<br>');
     tr.appendChild(td);
   }
   tb.appendChild(tr);
-  msg('아래 합계를 추가했습니다. 값을 고친 뒤 버튼을 다시 누르면 재계산됩니다.');
+  msg(T('mSumRowDone'));
 };
 /* Σ 우측 합계: 각 행의 숫자를 더한 열을 표 오른쪽에 추가 (재클릭 시 재계산) */
 $('tSumCol').onclick = ()=>{
-  const c = curCell(); if(!c){ msg('표 안을 클릭한 뒤 사용하세요.'); return; }
+  const c = curCell(); if(!c){ msg(T('mClickTable')); return; }
   const tb = c.closest('table');
   tb.querySelectorAll('td[data-sum], th[data-sum]').forEach(x=>x.remove());
   [...tb.rows].forEach(r=>{
     const isHead = r.cells[0] && r.cells[0].tagName === 'TH';
     const el = document.createElement(isHead ? 'th' : 'td');
     el.dataset.sum = '1'; el.style.background = '#EDF2FA';
-    if(isHead) el.textContent = '합계';
+    if(isHead) el.textContent = T('sumLabel');
     else if(r.dataset.sum) el.innerHTML = '<br>';
     else {
       let sum = 0, found = false;
@@ -566,7 +686,7 @@ $('tSumCol').onclick = ()=>{
     }
     r.appendChild(el);
   });
-  msg('우측 합계를 추가했습니다. 값을 고친 뒤 버튼을 다시 누르면 재계산됩니다.');
+  msg(T('mSumColDone'));
 };
 
 /* ── 표 → 엑셀(.xlsx) 저장 ── */
@@ -583,19 +703,19 @@ function tableToAOA(tb){
   return aoa;
 }
 $('tExportXlsx').onclick = async ()=>{
-  const c = curCell(); if(!c){ msg('표 안을 클릭한 뒤 사용하세요.'); return; }
-  if(typeof XLSX === 'undefined'){ msg('엑셀 모듈을 불러오지 못했습니다 (인터넷 연결 필요).'); return; }
+  const c = curCell(); if(!c){ msg(T('mClickTable')); return; }
+  if(typeof XLSX === 'undefined'){ msg(T('mXlsxNoMod')); return; }
   const ws = XLSX.utils.aoa_to_sheet(tableToAOA(c.closest('table')));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
   const buf = XLSX.write(wb, {bookType:'xlsx', type:'array'});
   await download(new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),
-                 '표_' + new Date().toISOString().slice(0,10) + '.xlsx');
+                 T('fnTable') + new Date().toISOString().slice(0,10) + '.xlsx');
 };
 
 /* ── 엑셀/CSV 불러오기 → 표로 삽입 ── */
 $('btnImportXlsx').onclick = ()=>{
-  if(typeof XLSX === 'undefined'){ msg('엑셀 모듈을 불러오지 못했습니다 (인터넷 연결 필요).'); return; }
+  if(typeof XLSX === 'undefined'){ msg(T('mXlsxNoMod')); return; }
   $('fileXlsx').click();
 };
 $('fileXlsx').onchange = e=>{
@@ -606,7 +726,7 @@ $('fileXlsx').onchange = e=>{
       const wb = XLSX.read(new Uint8Array(rd.result), {type:'array'});
       const ws = wb.Sheets[wb.SheetNames[0]];
       const aoa = XLSX.utils.sheet_to_json(ws, {header:1, blankrows:false, defval:''});
-      if(!aoa.length){ msg('빈 파일이거나 표를 찾지 못했습니다.'); return; }
+      if(!aoa.length){ msg(T('mXlsxEmpty')); return; }
       const cols = Math.max(...aoa.map(r=>r.length));
       let html = '<table>';
       aoa.forEach((r, ri)=>{
@@ -627,8 +747,8 @@ $('fileXlsx').onchange = e=>{
       } else {
         document.execCommand('insertHTML', false, html);
       }
-      msg(`${f.name} 을(를) 표로 불러왔습니다.`);
-    }catch(err){ msg('불러오기 실패: ' + err.message); }
+      msg(f.name + T('mXlsxImported'));
+    }catch(err){ msg(T('mImportFail') + err.message); }
   };
   rd.readAsArrayBuffer(f); e.target.value='';
 };
@@ -639,16 +759,16 @@ const DOC_CSS = `body{font-family:'Segoe UI','Malgun Gothic',sans-serif;line-hei
 table{border-collapse:collapse;margin:10px 0;width:100%;}td,th{border:1px solid #B9C0CA;padding:6px 9px;}th{background:#F0F3F7;}img{max-width:100%;}`;
 $('btnSaveDoc').onclick = ()=>{
   const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>DeskHaus 문서</title><style>${DOC_CSS}</style></head><body>${editor.innerHTML}</body></html>`;
-  download(new Blob([html], {type:'text/html'}), '문서_' + new Date().toISOString().slice(0,10) + '.html');
-  msg('문서를 저장했습니다.');
+  download(new Blob([html], {type:'text/html'}), T('fnDoc') + new Date().toISOString().slice(0,10) + '.html');
+  msg(T('mDocSaved'));
 };
 $('btnNewDoc').onclick = async ()=>{
   if(editor.textContent.trim() || editor.querySelector('img,table')){
-    if(!await askConfirm('현재 문서 내용이 모두 지워집니다. 저장하지 않은 내용은 복구할 수 없습니다. 새 문서를 시작할까요?')) return;
+    if(!await askConfirm(T('cfNewDoc'))) return;
   }
   editor.innerHTML = '<p><br></p>';
   editor.focus();
-  msg('새 문서를 시작합니다.');
+  msg(T('mNewDoc'));
 };
 $('btnOpenDoc').onclick = ()=> $('fileOpenDoc').click();
 $('fileOpenDoc').onchange = e=>{
@@ -657,7 +777,7 @@ $('fileOpenDoc').onchange = e=>{
   rd.onload = ()=>{
     const dom = new DOMParser().parseFromString(rd.result, 'text/html');
     editor.innerHTML = dom.body.innerHTML;
-    msg('문서를 불러왔습니다.');
+    msg(T('mDocOpened'));
   };
   rd.readAsText(f); e.target.value='';
 };
@@ -727,8 +847,8 @@ function renderPanel(){
       th.appendChild(t);
     } else th.textContent = '가';
     const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = l.name;
-    nm.title = '더블클릭하여 이름 변경';
-    nm.ondblclick = ev=>{ ev.stopPropagation(); const n = prompt('레이어 이름', l.name); if(n){ l.name = n; renderPanel(); } };
+    nm.title = T('layerRename');
+    nm.ondblclick = ev=>{ ev.stopPropagation(); const n = prompt(T('layerRenamePrompt'), l.name); if(n){ l.name = n; renderPanel(); } };
     const eye = document.createElement('button'); eye.className = 'eye';
     eye.textContent = l.visible ? '👁' : '–';
     eye.title = '표시 / 숨김';
@@ -752,7 +872,7 @@ $('lyUp').onclick = ()=>{ const i = layers.findIndex(l=>l.id===selId); if(i>=0 &
 $('lyDown').onclick = ()=>{ const i = layers.findIndex(l=>l.id===selId); if(i>0){ [layers[i],layers[i-1]]=[layers[i-1],layers[i]]; render(); renderPanel(); } };
 $('lyDel').onclick = ()=>{ layers = layers.filter(l=>l.id!==selId); selId = layers.length?layers[layers.length-1].id:null; render(); renderPanel(); };
 $('lyRot').onclick = ()=>{
-  const l = sel(); if(!l || l.type!=='image'){ msg('이미지 레이어를 선택하세요.'); return; }
+  const l = sel(); if(!l || l.type!=='image'){ msg(T('mSelImgLayer')); return; }
   const c = document.createElement('canvas');
   c.width = l.img.height; c.height = l.img.width;
   const x = c.getContext('2d');
@@ -761,7 +881,7 @@ $('lyRot').onclick = ()=>{
   render(); renderPanel();
 };
 $('lyFlip').onclick = ()=>{
-  const l = sel(); if(!l || l.type!=='image'){ msg('이미지 레이어를 선택하세요.'); return; }
+  const l = sel(); if(!l || l.type!=='image'){ msg(T('mSelImgLayer')); return; }
   const c = document.createElement('canvas');
   c.width = l.img.width; c.height = l.img.height;
   const x = c.getContext('2d');
@@ -776,19 +896,19 @@ function addImageLayer(src, name){
     let w = img.width, h = img.height;
     const max = Math.min(cv.width*0.8, cv.height*0.8);
     if(w>max || h>max){ const r = Math.min(max/w, max/h); w*=r; h*=r; }
-    const l = {id:nextId++, type:'image', name:name||('이미지 '+nextId), img, x:(cv.width-w)/2, y:(cv.height-h)/2, w, h, opacity:1, visible:true};
+    const l = {id:nextId++, type:'image', name:name||(T('imgLayer')+' '+nextId), img, x:(cv.width-w)/2, y:(cv.height-h)/2, w, h, opacity:1, visible:true};
     layers.push(l); selId = l.id; render(); renderPanel();
   };
   img.src = src;
 }
 $('btnNewCanvas').onclick = async ()=>{
   if(layers.length){
-    if(!await askConfirm('현재 레이어가 모두 지워집니다. 내보내지 않은 작업은 복구할 수 없습니다. 새 캔버스를 시작할까요?')) return;
+    if(!await askConfirm(T('cfNewCanvas'))) return;
   }
   layers = []; selId = null; docImgTarget = null;
   $('btnApplyDoc').style.display = 'none';
   render(); renderPanel();
-  msg('새 캔버스를 시작합니다.');
+  msg(T('mNewCanvas'));
 };
 $('btnAddImg').onclick = ()=> $('fileLayerImg').click();
 $('fileLayerImg').onchange = e=>{
@@ -799,8 +919,8 @@ $('fileLayerImg').onchange = e=>{
 };
 $('btnAddText').onclick = ()=> $('dlgText').showModal();
 $('txOk').onclick = ()=>{
-  const l = {id:nextId++, type:'text', name:$('txContent').value.slice(0,12)||'텍스트',
-    text:$('txContent').value||'텍스트', fontSize:+$('txSize').value||48, color:$('txColor').value,
+  const l = {id:nextId++, type:'text', name:$('txContent').value.slice(0,12)||T('txtDefault'),
+    text:$('txContent').value||T('txtDefault'), fontSize:+$('txSize').value||48, color:$('txColor').value,
     x:cv.width/2-100, y:cv.height/2-24, opacity:1, visible:true};
   layers.push(l); selId = l.id; $('dlgText').close(); render(); renderPanel();
 };
@@ -877,7 +997,7 @@ $('btnCrop').onclick = ()=>{
   $('cropLayer').style.display = cropping?'block':'none';
   $('btnCrop').textContent = cropping?'자르기 취소':'자르기';
   cropRect = null; cropCtx.clearRect(0,0,cropCv.width,cropCv.height);
-  if(cropping) msg('자를 영역을 드래그한 뒤 Enter 키로 확정하세요.');
+  if(cropping) msg(T('mCropHint'));
 };
 cropCv.addEventListener('mousedown', e=>{
   const r = cropCv.getBoundingClientRect();
@@ -902,7 +1022,7 @@ window.addEventListener('keydown', e=>{
     cv.width = cropCv.width = Math.round(cropRect.w);
     cv.height = cropCv.height = Math.round(cropRect.h);
     $('btnCrop').click(); applyZoom(); render();
-    msg('잘라냈습니다.');
+    msg(T('mCropped'));
   }
   if(e.key==='Delete' && !cropping && selId && document.activeElement.tagName!=='INPUT' && !editor.contains(document.activeElement)){
     $('lyDel').click();
@@ -932,23 +1052,23 @@ function flatten(forceBg){
 $('fmtSel').onchange = e=> $('icoSize').style.display = e.target.value==='ico'?'inline-block':'none';
 
 $('btnExport').onclick = async ()=>{
-  if(!layers.length){ msg('내보낼 레이어가 없습니다. 먼저 이미지나 텍스트를 추가하세요.'); return; }
+  if(!layers.length){ msg(T('mNoLayers')); return; }
   const fmt = $('fmtSel').value;
   const stamp = new Date().toISOString().slice(0,10);
   try{
     if(fmt==='png' || fmt==='webp'){
-      flatten(false).toBlob(b=> download(b, `이미지_${stamp}.${fmt==='png'?'png':'webp'}`), 'image/'+fmt);
+      flatten(false).toBlob(b=> download(b, `${T('fnImg')}${stamp}.${fmt==='png'?'png':'webp'}`), 'image/'+fmt);
     } else if(fmt==='jpeg'){
-      flatten(true).toBlob(b=> download(b, `이미지_${stamp}.jpg`), 'image/jpeg', 0.92);
+      flatten(true).toBlob(b=> download(b, `${T('fnImg')}${stamp}.jpg`), 'image/jpeg', 0.92);
     } else if(fmt==='ico'){
       const size = +$('icoSize').value;
-      download(await makeIco(size), `아이콘_${stamp}.ico`);
+      download(await makeIco(size), `${T('fnIcon')}${stamp}.ico`);
     } else if(fmt==='gif'){
-      msg('GIF 생성 중… (배경은 흰색으로 저장됩니다)');
-      download(await makeGif(), `이미지_${stamp}.gif`);
+      msg(T('mGifMaking'));
+      download(await makeGif(), `${T('fnImg')}${stamp}.gif`);
     }
-    msg('내보냈습니다.');
-  } catch(err){ msg('내보내기 실패: ' + err.message); }
+    msg(T('mExported'));
+  } catch(err){ msg(T('mExportFail') + err.message); }
 };
 
 /* ICO: 정사각 리사이즈 후 PNG를 ICO 컨테이너에 포장 */
@@ -984,9 +1104,9 @@ function makeGif(){
         try{
           const t = await (await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js')).text();
           res(URL.createObjectURL(new Blob([t], {type:'application/javascript'})));
-        } catch(e){ gifReady=null; rej(new Error('GIF 모듈을 불러오지 못했습니다 (인터넷 연결 필요)')); }
+        } catch(e){ gifReady=null; rej(new Error(T('mGifFail'))); }
       };
-      s.onerror = ()=>{ gifReady=null; rej(new Error('GIF 모듈을 불러오지 못했습니다 (인터넷 연결 필요)')); };
+      s.onerror = ()=>{ gifReady=null; rej(new Error(T('mGifFail'))); };
       document.head.appendChild(s);
     });
   }
@@ -1004,17 +1124,23 @@ function makeGif(){
 function openImageEditor(src){
   layers = []; selId = null;
   setMode('img');
-  addImageLayer(src, '문서 이미지');
+  addImageLayer(src, T('docImgName'));
   $('btnApplyDoc').style.display = 'inline-block';
-  msg('편집 후 "문서에 적용"을 누르면 원래 자리의 이미지가 교체됩니다.');
+  msg(T('mApplyDocHint'));
 }
 $('btnApplyDoc').onclick = ()=>{
-  if(!docImgTarget){ msg('적용할 문서 이미지가 없습니다.'); return; }
+  if(!docImgTarget){ msg(T('mNoApplyTarget')); return; }
   docImgTarget.src = flatten(false).toDataURL('image/png');
   $('btnApplyDoc').style.display = 'none';
   setMode('doc');
-  msg('문서에 적용했습니다.');
+  msg(T('mAppliedDoc'));
 };
+
+/* 언어 전환 */
+$('langBtn').onclick = ()=>{ LANG = (LANG==='ko' ? 'en' : 'ko'); applyLang(); };
+/* 브라우저 언어가 한국어가 아니면 영어로 시작 */
+if(!(navigator.language||'').toLowerCase().startsWith('ko')) LANG = 'en';
+applyLang();
 
 /* 초기화 */
 applyZoom(); render(); renderPanel();
