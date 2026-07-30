@@ -57,6 +57,8 @@
   button:hover{border-color:var(--accent); color:var(--accent);}
   button.primary{background:var(--accent); color:#fff; border-color:var(--accent);}
   button.primary:hover{background:#173D70; color:#fff;}
+  button.newbtn{background:#B22234; color:#fff; border-color:#B22234; font-weight:600;}
+  button.newbtn:hover{background:#8E1B29; color:#fff; border-color:#8E1B29;}
   button.icon{min-width:32px; font-weight:600;}
   button.danger:hover{border-color:var(--danger); color:var(--danger);}
   select{padding:5px 6px;}
@@ -269,7 +271,7 @@
   <button class="icon" data-cmd="undo" title="실행 취소">↶</button>
   <button class="icon" data-cmd="redo" title="다시 실행">↷</button>
   <div class="sep"></div>
-  <button id="btnNewDoc" data-i18n="btnNewDoc">새 문서</button>
+  <button id="btnNewDoc" class="newbtn" data-i18n="btnNewDoc">새 문서</button>
   <button id="btnOpenDoc" data-i18n="btnOpenDoc">열기</button>
   <button id="btnImportXlsx" data-i18n-title="btnImportXlsxT" data-i18n="btnImportXlsx" title="엑셀(.xlsx) 또는 CSV 파일을 표로 불러옵니다">엑셀·CSV 열기</button>
   <button id="btnSaveDoc" class="primary" data-i18n="btnSaveDoc">저장 (.html)</button>
@@ -278,7 +280,7 @@
 
 <!-- ══ 그림 모드 툴바 ══ -->
 <div class="toolbar" id="tbImg" style="display:none;">
-  <button id="btnNewCanvas" data-i18n="btnNewCanvas">새 캔버스</button>
+  <button id="btnNewCanvas" class="newbtn" data-i18n="btnNewCanvas">새 캔버스</button>
   <button id="btnAddImg" class="primary" data-i18n="btnAddImg">이미지 추가</button>
   <button id="btnAddText" data-i18n="btnAddText">텍스트 추가</button>
   <div class="sep"></div>
@@ -309,7 +311,7 @@
 
 <!-- ══ 표(스프레드시트) 모드 툴바 ══ -->
 <div class="toolbar" id="tbSheet" style="display:none;">
-  <button id="shNew" data-i18n="shNew">새 표</button>
+  <button id="shNew" class="newbtn" data-i18n="shNew">새 표</button>
   <button id="shOpen" class="primary" data-i18n="shOpen">엑셀·CSV 열기</button>
   <button id="shSaveXlsx" data-i18n="shSaveXlsx">엑셀로 저장</button>
   <button id="shSaveCsv" data-i18n="shSaveCsv">CSV로 저장</button>
