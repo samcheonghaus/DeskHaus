@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -233,7 +233,7 @@
     <div class="tab" id="tabImg"><span class="dot"></span><span data-i18n="tabImg">그림</span></div>
     <div class="tab" id="tabSheet"><span class="dot"></span><span data-i18n="tabSheet">표</span></div>
   </div>
-  <button id="langBtn" title="Language / 언어" style="margin-left:auto; margin-bottom:12px;">EN</button>
+  <button id="langBtn" title="Language / 언어" style="margin-left:auto; margin-bottom:12px;">한국어</button>
 </header>
 
 <!-- ══ 글 모드 툴바 ══ -->
@@ -579,7 +579,7 @@ const I18N = {
     mSheetEmpty:'The sheet is empty.', mSentToDoc:'Sent the table to the document. (See the Text tab)',
   }
 };
-let LANG = 'ko';
+let LANG = 'en';
 const T = k => (I18N[LANG][k] !== undefined ? I18N[LANG][k] : k);
 function applyLang(){
   document.documentElement.lang = LANG;
@@ -1631,8 +1631,7 @@ $('shToDoc').onclick = ()=>{
   msg(T('mSentToDoc'));
 };
 
-/* 브라우저 언어가 한국어가 아니면 영어로 시작 */
-if(!(navigator.language||'').toLowerCase().startsWith('ko')) LANG = 'en';
+/* English is the default language. The language button can switch to Korean. */
 loadLetterhead();
 fillWelcome();
 applyLang();
