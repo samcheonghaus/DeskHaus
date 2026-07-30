@@ -104,6 +104,11 @@
     position:absolute; top:-6px; right:-6px; width:24px; height:24px; min-width:0;
     padding:0; border-radius:50%; font-size:14px; line-height:1; color:var(--muted);
   }
+  #lhShow{
+    display:block; margin-bottom:20px; font-size:12px; color:var(--muted);
+    padding:5px 12px; border:1px dashed var(--line); background:#FAFBFC;
+  }
+  #lhShow:hover{ border-color:var(--accent); color:var(--accent); }
   .page h1{font-size:26px; margin:14px 0 8px;}
   .page h2{font-size:20px; margin:12px 0 6px;}
   .page p{margin:4px 0;}
@@ -287,6 +292,7 @@
           </div>
           <button id="lhToggle" data-i18n-title="lhToggleT" title="">–</button>
         </div>
+        <button id="lhShow" data-i18n="lhShow" style="display:none;">＋ 레터헤드</button>
         <div id="editor" contenteditable="true" spellcheck="false"></div>
       </div>
     </div>
@@ -425,7 +431,7 @@ const I18N = {
     thTitle:'제목', sumLabel:'합계', txtDefault:'텍스트', imgLayer:'이미지', docImgName:'문서 이미지',
     fnDoc:'문서_', fnImg:'이미지_', fnIcon:'아이콘_', fnTable:'표_',
     lhLogoAdd:'＋ 로고', lhNamePh:'이름 또는 회사명', lhEmailPh:'이메일', lhPhonePh:'휴대폰 번호',
-    lhToggleT:'레터헤드 접기/펼치기', lhLogoT:'클릭하여 로고 이미지 넣기',
+    lhToggleT:'레터헤드 접기/펼치기', lhLogoT:'클릭하여 로고 이미지 넣기', lhShow:'＋ 레터헤드 펼치기',
     welcomeTitle:'DeskHaus에 오신 것을 환영합니다',
     welcomeP1:'이곳에 바로 글을 쓰세요. 위쪽 레터헤드에 로고와 이름·연락처를 넣으면 편지지처럼 쓸 수 있습니다.',
     welcomeP2:'표를 넣고, 이미지를 넣고, 이미지를 더블클릭하면 그림 모드에서 편집한 뒤 다시 문서에 적용할 수 있습니다.',
@@ -479,7 +485,7 @@ const I18N = {
     thTitle:'Header', sumLabel:'Sum', txtDefault:'Text', imgLayer:'Image', docImgName:'Document image',
     fnDoc:'document_', fnImg:'image_', fnIcon:'icon_', fnTable:'table_',
     lhLogoAdd:'＋ Logo', lhNamePh:'Name or company', lhEmailPh:'Email', lhPhonePh:'Phone',
-    lhToggleT:'Collapse / expand letterhead', lhLogoT:'Click to add a logo image',
+    lhToggleT:'Collapse / expand letterhead', lhLogoT:'Click to add a logo image', lhShow:'＋ Show letterhead',
     welcomeTitle:'Welcome to DeskHaus',
     welcomeP1:'Start writing right here. Add your logo, name, and contact info to the letterhead above to use it like stationery.',
     welcomeP2:'Insert tables and images. Double-click an image to edit it in Image mode, then apply it back to the document.',
@@ -1239,7 +1245,7 @@ function loadLetterhead(){
   $('lhEmail').innerHTML = data.email || '';
   $('lhPhone').innerHTML = data.phone || '';
   if(data.logo){ $('lhLogo').src = data.logo; $('lhLogo').style.display='block'; $('lhLogoPlaceholder').style.display='none'; }
-  if(data.collapsed){ $('letterhead').classList.add('collapsed'); $('lhToggle').textContent='+'; }
+  if(data.collapsed){ setLhCollapsed(true); }
 }
 /* 로고 업로드 */
 $('lhLogoBox').onclick = ()=> $('fileLogo').click();
@@ -1253,12 +1259,13 @@ $('fileLogo').onchange = e=>{
   rd.readAsDataURL(f); e.target.value='';
 };
 /* 접기/펼치기 */
-$('lhToggle').onclick = ()=>{
-  const lh = $('letterhead'); lh.classList.toggle('collapsed');
-  $('lhToggle').textContent = lh.classList.contains('collapsed') ? '+' : '–';
-  /* collapsed면 버튼이 숨으니 페이지 상단에 다시 펼침 버튼 노출 */
-  saveLetterhead();
-};
+function setLhCollapsed(collapsed){
+  $('letterhead').classList.toggle('collapsed', collapsed);
+  $('lhShow').style.display = collapsed ? 'block' : 'none';
+  $('lhToggle').textContent = '–';
+}
+$('lhToggle').onclick = ()=>{ setLhCollapsed(true); saveLetterhead(); };
+$('lhShow').onclick = ()=>{ setLhCollapsed(false); saveLetterhead(); };
 /* 입력 변경 시 자동 저장 */
 ['lhName','lhEmail','lhPhone'].forEach(id=>{
   $(id).addEventListener('input', saveLetterhead);
