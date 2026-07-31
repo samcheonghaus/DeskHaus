@@ -1118,19 +1118,20 @@ async function buildDocx(){
       /* 로고가 있으면: 테두리 없는 2칸 표 (로고 | 정보) */
       const logoRun = await imgToRun(lhLogoEl, {fixedWidth:80});
       const logoCell = new D.TableCell({
-        width:{ size:18, type:D.WidthType.PERCENTAGE },
+        width:{ size:1620, type:D.WidthType.DXA },
         margins:{ right:180 },
         verticalAlign:D.VerticalAlign.CENTER,
         children:[ new D.Paragraph({ children: logoRun ? [logoRun] : [] }) ],
       });
       const infoCell = new D.TableCell({
-        width:{ size:82, type:D.WidthType.PERCENTAGE },
+        width:{ size:7380, type:D.WidthType.DXA },
         verticalAlign:D.VerticalAlign.CENTER,
         children: infoParas,
       });
       const noBorder = { style:D.BorderStyle.NONE, size:0, color:'FFFFFF' };
       children.push(new D.Table({
         width:{ size:100, type:D.WidthType.PERCENTAGE },
+        columnWidths:[1620, 7380],   /* twip: 로고칸 ~1.1in, 정보칸 나머지 (합 9000=본문폭) */
         borders:{ top:noBorder, bottom:noBorder, left:noBorder, right:noBorder, insideHorizontal:noBorder, insideVertical:noBorder },
         rows:[ new D.TableRow({ children:[logoCell, infoCell] }) ],
       }));
