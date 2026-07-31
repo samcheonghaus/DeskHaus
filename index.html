@@ -114,9 +114,10 @@
   /* ── 글 모드 ── */
   #docScroll{flex:1; overflow:auto; padding:28px 0 60px;}
   .page{
-    width:820px; min-height:1060px; margin:0 auto; background:#fff;
+    width:210mm; min-height:297mm; margin:0 auto; background:#fff;
     border:1px solid var(--line); box-shadow:0 2px 14px rgba(30,40,60,.08);
-    padding:70px 72px; outline:none; line-height:1.7;
+    padding:25mm 20mm; outline:none; line-height:1.7;
+    box-sizing:border-box;
   }
   /* 레터헤드 */
   #letterhead{
@@ -223,14 +224,16 @@
   dialog .btns{display:flex; justify-content:flex-end; gap:8px; margin-top:14px;}
 
   @media print{
+    @page { size: A4 portrait; margin: 20mm; }
     header,.toolbar,footer,aside{display:none !important;}
     #docScroll{overflow:visible; padding:0;}
-    .page{border:none; box-shadow:none; width:auto; min-height:auto; padding:0;}
+    .page{border:none; box-shadow:none; width:auto; min-height:auto; padding:0; margin:0;}
     body{overflow:visible;}
-    #modeImg{display:none !important;}
+    #modeImg,#modeSheet,#modePdf{display:none !important;}
     #modeDoc{display:block !important;}
     #lhToggle{display:none !important;}
     #lhLogoBox{border:none !important;}
+    #imgSizeBar{display:none !important;}
   }
 </style>
 </head>
@@ -349,6 +352,7 @@
   <button id="pdfPrev" class="icon" title="이전 페이지">◀</button>
   <span id="pdfPageInfo" style="font-size:13px; color:var(--muted); min-width:78px; text-align:center;">– / –</span>
   <button id="pdfNext" class="icon" title="다음 페이지">▶</button>
+  <button id="pdfDelPage" class="danger" data-i18n="pdfDelPage" title="현재 페이지를 삭제합니다">이 페이지 삭제</button>
   <div class="sep"></div>
   <label class="small" data-i18n="lblZoom">확대</label>
   <select id="pdfZoom">
@@ -577,6 +581,9 @@ const I18N = {
     tabPdf:'PDF', statModePdf:'PDF 모드', statHintPdf:'◀ ▶ 로 페이지 이동, 페이지를 그림 모드로 가져와 편집할 수 있습니다',
     pdfOpen:'PDF 열기', pdfAdd:'PDF 이어붙이기', pdfToImg:'이 페이지 → 그림', pdfExtractPng:'현재 페이지 PNG 저장',
     pdfSavePage:'이 페이지만 PDF 저장', pdfSaveAll:'전체 PDF 저장', pdfEmptyMsg:'PDF 열기를 눌러 파일을 여세요.',
+    pdfDelPage:'이 페이지 삭제', cfDelPage:'{n}쪽을 삭제할까요? 저장 전까지는 원본 파일에 영향을 주지 않습니다.',
+    mPdfPageDeleted:'페이지를 삭제했습니다. 저장하려면 "전체 PDF 저장"을 누르세요.',
+    mPdfLastPage:'마지막 한 페이지는 삭제할 수 없습니다.',
     pdfPageLayer:'PDF 페이지',
     mPdfNoMod:'PDF 모듈을 불러오지 못했습니다 (인터넷 연결 필요).',
     mPdfOpened:' 을(를) 열었습니다.', mPdfFail:'PDF 처리 실패: ', mPdfOpenFirst:'먼저 PDF를 여세요.',
@@ -651,6 +658,9 @@ const I18N = {
     tabPdf:'PDF', statModePdf:'PDF mode', statHintPdf:'Use ◀ ▶ to change pages; you can send a page to Image mode to edit it',
     pdfOpen:'Open PDF', pdfAdd:'Append PDF', pdfToImg:'This page → Image', pdfExtractPng:'Save page as PNG',
     pdfSavePage:'Save this page as PDF', pdfSaveAll:'Save whole PDF', pdfEmptyMsg:'Click "Open PDF" to open a file.',
+    pdfDelPage:'Delete this page', cfDelPage:'Delete page {n}? The original file is untouched until you save.',
+    mPdfPageDeleted:'Page deleted. Click "Save whole PDF" to keep the change.',
+    mPdfLastPage:'You cannot delete the last remaining page.',
     pdfPageLayer:'PDF page',
     mPdfNoMod:'Could not load the PDF module (internet required).',
     mPdfOpened:' opened.', mPdfFail:'PDF processing failed: ', mPdfOpenFirst:'Open a PDF first.',
@@ -847,7 +857,7 @@ function updateImgLabel(){
 }
 function setImgWidth(px){
   if(!selImg) return;
-  px = Math.max(30, Math.min(760, Math.round(px)));
+  px = Math.max(30, Math.min(640, Math.round(px)));
   selImg.classList.add('sized');
   selImg.style.width = px+'px';
   selImg.style.height = 'auto';
@@ -1049,7 +1059,7 @@ $('fileXlsx').onchange = e=>{
 function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 /* 문서 저장 / 열기 / 인쇄 */
-const DOC_CSS = `body{font-family:'Segoe UI','Malgun Gothic',sans-serif;line-height:1.7;max-width:820px;margin:40px auto;padding:0 40px;color:#22262B;}
+const DOC_CSS = `@page{size:A4 portrait;margin:20mm;} body{font-family:'Segoe UI','Malgun Gothic',sans-serif;line-height:1.7;max-width:170mm;margin:20mm auto;padding:0 20px;color:#22262B;}
 table{border-collapse:collapse;margin:10px 0;width:100%;}td,th{border:1px solid #B9C0CA;padding:6px 9px;text-align:center;vertical-align:middle;}th{background:#F0F3F7;}img{max-width:100%;}
 .lh{display:flex;align-items:center;gap:20px;padding-bottom:18px;margin-bottom:26px;border-bottom:2px solid #1F4E8C;}
 .lh-logo{width:88px;height:88px;flex-shrink:0;object-fit:contain;}
@@ -1196,20 +1206,20 @@ async function buildDocx(){
       /* 로고가 있으면: 테두리 없는 2칸 표 (로고 | 정보) */
       const logoRun = await imgToRun(lhLogoEl, {fixedWidth:80});
       const logoCell = new D.TableCell({
-        width:{ size:1620, type:D.WidthType.DXA },
+        width:{ size:1730, type:D.WidthType.DXA },
         margins:{ right:180 },
         verticalAlign:D.VerticalAlign.CENTER,
         children:[ new D.Paragraph({ children: logoRun ? [logoRun] : [] }) ],
       });
       const infoCell = new D.TableCell({
-        width:{ size:7380, type:D.WidthType.DXA },
+        width:{ size:7908, type:D.WidthType.DXA },
         verticalAlign:D.VerticalAlign.CENTER,
         children: infoParas,
       });
       const noBorder = { style:D.BorderStyle.NONE, size:0, color:'FFFFFF' };
       children.push(new D.Table({
         width:{ size:100, type:D.WidthType.PERCENTAGE },
-        columnWidths:[1620, 7380],   /* twip: 로고칸 ~1.1in, 정보칸 나머지 (합 9000=본문폭) */
+        columnWidths:[1730, 7908],   /* twip: A4 본문폭 9638 = 로고칸 + 정보칸 */
         borders:{ top:noBorder, bottom:noBorder, left:noBorder, right:noBorder, insideHorizontal:noBorder, insideVertical:noBorder },
         rows:[ new D.TableRow({ children:[logoCell, infoCell] }) ],
       }));
@@ -1259,7 +1269,10 @@ async function buildDocx(){
 
   const doc = new D.Document({
     numbering:{ config:[{ reference:'num', levels:[{ level:0, format:D.LevelFormat.DECIMAL, text:'%1.', alignment:D.AlignmentType.START }] }] },
-    sections:[{ children }],
+    sections:[{
+      properties:{ page:{ size:{ width:11906, height:16838, orientation:D.PageOrientation.PORTRAIT }, margin:{ top:1134, bottom:1134, left:1134, right:1134 } } },
+      children
+    }],
   });
   return await D.Packer.toBlob(doc);
 }
@@ -2077,6 +2090,21 @@ $('pdfSavePage').onclick = async ()=>{
 $('pdfSaveAll').onclick = async ()=>{
   if(!pdfBytes){ msg(T('mPdfOpenFirst')); return; }
   await download(new Blob([pdfBytes],{type:'application/pdf'}), T('fnPdf')+new Date().toISOString().slice(0,10)+'.pdf');
+};
+/* 현재 페이지 삭제 (pdf-lib) */
+$('pdfDelPage').onclick = async ()=>{
+  if(!pdfBytes){ msg(T('mPdfOpenFirst')); return; }
+  if(pdfTotal <= 1){ msg(T('mPdfLastPage')); return; }
+  if(!await askConfirm(T('cfDelPage').replace('{n}', pdfPage))) return;
+  try{
+    const src = await PDFLib.PDFDocument.load(pdfBytes);
+    src.removePage(pdfPage - 1);
+    const bytes = await src.save();
+    const keepPage = Math.min(pdfPage, pdfTotal - 1);  /* 삭제 후 볼 페이지 */
+    await loadPdf(new Uint8Array(bytes));
+    pdfPage = keepPage; await renderPdfPage();
+    msg(T('mPdfPageDeleted'));
+  }catch(err){ msg(T('mPdfFail') + err.message); }
 };
 
 /* 브라우저 언어가 한국어가 아니면 영어로 시작 */
