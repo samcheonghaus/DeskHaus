@@ -9,6 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/hyperformula/dist/hyperformula.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.11.0/mammoth.browser.min.js"></script>
 <style>
   :root{
     --bg:#EDEFF2; --panel:#FFFFFF; --ink:#22262B; --muted:#6B7482;
@@ -280,7 +281,7 @@
   <button class="icon" data-cmd="redo" title="다시 실행">↷</button>
   <div class="sep"></div>
   <button id="btnNewDoc" class="newbtn" data-i18n="btnNewDoc">새 문서</button>
-  <button id="btnOpenDoc" data-i18n="btnOpenDoc">열기</button>
+  <button id="btnOpenDoc" data-i18n-title="btnOpenDocT" data-i18n="btnOpenDoc" title="HTML · 워드(.docx) · 텍스트(.txt) 파일 열기">열기</button>
   <button id="btnImportXlsx" data-i18n-title="btnImportXlsxT" data-i18n="btnImportXlsx" title="엑셀(.xlsx) 또는 CSV 파일을 표로 불러옵니다">엑셀·CSV 열기</button>
   <button id="btnSaveDoc" class="primary" data-i18n="btnSaveDoc">저장 (.html)</button>
   <button id="btnPrint" data-i18n="btnPrint">인쇄 / PDF</button>
@@ -446,7 +447,7 @@
 <!-- 숨김 파일 입력 -->
 <input type="file" id="fileDocImg" accept="image/*" hidden>
 <input type="file" id="fileLayerImg" accept="image/*" hidden>
-<input type="file" id="fileOpenDoc" accept=".html,.htm" hidden>
+<input type="file" id="fileOpenDoc" accept=".html,.htm,.docx,.txt" hidden>
 <input type="file" id="fileXlsx" accept=".xlsx,.xls,.csv" hidden>
 <input type="file" id="fileLogo" accept="image/*" hidden>
 <input type="file" id="fileSheetOpen" accept=".xlsx,.xls,.csv" hidden>
@@ -523,6 +524,7 @@ const I18N = {
     /* JS 메시지 */
     mSaved:'저장했습니다: ', mSavedShort:'저장했습니다.', mDocSaved:'문서를 저장했습니다.',
     mDocOpened:'문서를 불러왔습니다.', mNewDoc:'새 문서를 시작합니다.', mNewCanvas:'새 캔버스를 시작합니다.',
+    mDocxNoMod:'워드(.docx) 변환 모듈을 불러오지 못했습니다 (인터넷 연결 필요).', mOpenFail:'파일 열기 실패: ', btnOpenDocT:'HTML · 워드(.docx) · 텍스트(.txt) 파일 열기',
     mNoLayers:'내보낼 레이어가 없습니다. 먼저 이미지나 텍스트를 추가하세요.',
     mExported:'내보냈습니다.', mExportFail:'내보내기 실패: ',
     mGifMaking:'GIF 생성 중… (배경은 흰색으로 저장됩니다)',
@@ -593,6 +595,7 @@ const I18N = {
     lyUpT:'Bring forward', lyDownT:'Send backward', lyRotT:'Rotate 90° clockwise', lyFlipT:'Flip horizontally',
     mSaved:'Saved: ', mSavedShort:'Saved.', mDocSaved:'Document saved.',
     mDocOpened:'Document opened.', mNewDoc:'Started a new document.', mNewCanvas:'Started a new canvas.',
+    mDocxNoMod:'Could not load the Word (.docx) module (internet required).', mOpenFail:'Failed to open file: ', btnOpenDocT:'Open HTML, Word (.docx), or text (.txt) files',
     mNoLayers:'No layers to export. Add an image or text first.',
     mExported:'Exported.', mExportFail:'Export failed: ',
     mGifMaking:'Creating GIF… (background is saved as white)',
@@ -1008,13 +1011,31 @@ $('btnNewDoc').onclick = async ()=>{
 $('btnOpenDoc').onclick = ()=> $('fileOpenDoc').click();
 $('fileOpenDoc').onchange = e=>{
   const f = e.target.files[0]; if(!f) return;
+  const name = f.name.toLowerCase();
   const rd = new FileReader();
-  rd.onload = ()=>{
-    const dom = new DOMParser().parseFromString(rd.result, 'text/html');
-    editor.innerHTML = dom.body.innerHTML;
-    msg(T('mDocOpened'));
-  };
-  rd.readAsText(f); e.target.value='';
+  if(name.endsWith('.docx')){
+    if(typeof mammoth === 'undefined'){ msg(T('mDocxNoMod')); e.target.value=''; return; }
+    rd.onload = ()=>{
+      mammoth.convertToHtml({arrayBuffer: rd.result})
+        .then(res=>{ editor.innerHTML = res.value || '<p><br></p>'; editor.dataset.welcome='0'; msg(T('mDocOpened')); })
+        .catch(err=> msg(T('mOpenFail') + err.message));
+    };
+    rd.readAsArrayBuffer(f);
+  } else if(name.endsWith('.txt')){
+    rd.onload = ()=>{
+      const esc = s=> s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      const html = rd.result.split(/\r?\n/).map(line=> line.trim()==='' ? '<p><br></p>' : '<p>'+esc(line)+'</p>').join('');
+      editor.innerHTML = html || '<p><br></p>'; editor.dataset.welcome='0'; msg(T('mDocOpened'));
+    };
+    rd.readAsText(f);
+  } else {  /* .html, .htm */
+    rd.onload = ()=>{
+      const dom = new DOMParser().parseFromString(rd.result, 'text/html');
+      editor.innerHTML = dom.body.innerHTML; editor.dataset.welcome='0'; msg(T('mDocOpened'));
+    };
+    rd.readAsText(f);
+  }
+  e.target.value='';
 };
 $('btnPrint').onclick = ()=>{ setMode('doc'); window.print(); };
 
