@@ -158,7 +158,7 @@
   .page p{margin:4px 0;}
   .page ul,.page ol{margin:6px 0 6px 24px;}
   .page table{border-collapse:collapse; margin:10px 0; width:100%;}
-  .page td,.page th{border:1px solid #B9C0CA; padding:6px 9px; min-width:40px;}
+  .page td,.page th{border:1px solid #B9C0CA; padding:6px 9px; min-width:40px; text-align:center; vertical-align:middle;}
   .page th{background:#F0F3F7; font-weight:600;}
   .page img{max-width:100%; cursor:pointer; border-radius:2px;}
   .page img:hover{outline:2px solid var(--accent); outline-offset:2px;}
@@ -508,7 +508,7 @@ const I18N = {
     layerTitle:'레이어 (위 = 앞)', lblOpacity:'투명도',
     lyUp:'▲ 앞', lyDown:'▼ 뒤', lyDel:'삭제', lyRot:'↻ 회전', lyFlip:'⇋ 반전',
     statModeDoc:'글 모드', statModeImg:'그림 모드',
-    statHintDoc:'숫자를 드래그 선택하면 합계·평균이 여기에 표시됩니다',
+    statHintDoc:'',
     statHintImg:'레이어를 클릭해 이동, 모서리 사각형으로 크기 조절',
     dlgSaveTitle:'저장할 파일 이름', dlgTableTitle:'표 삽입', dlgTextTitle:'텍스트 레이어 추가', dlgCanvasTitle:'캔버스 크기',
     btnCancel:'취소', btnSave:'저장', btnInsert:'삽입', btnAdd:'추가', btnApply:'적용', btnOk:'확인',
@@ -580,7 +580,7 @@ const I18N = {
     layerTitle:'Layers (top = front)', lblOpacity:'Opacity',
     lyUp:'▲ Up', lyDown:'▼ Down', lyDel:'Delete', lyRot:'↻ Rotate', lyFlip:'⇋ Flip',
     statModeDoc:'Text mode', statModeImg:'Image mode',
-    statHintDoc:'Select numbers by dragging to see sum and average here',
+    statHintDoc:'',
     statHintImg:'Click a layer to move it; drag the corner square to resize',
     dlgSaveTitle:'File name to save', dlgTableTitle:'Insert table', dlgTextTitle:'Add text layer', dlgCanvasTitle:'Canvas size',
     btnCancel:'Cancel', btnSave:'Save', btnInsert:'Insert', btnAdd:'Add', btnApply:'Apply', btnOk:'OK',
@@ -795,27 +795,8 @@ editor.addEventListener('dblclick', e=>{
   }
 });
 
-/* 선택 영역 숫자 계산 (모든 범위의 실제 내용 기준으로 계산) */
-function updateCalc(){
-  const s = window.getSelection();
-  const el = $('statCalc');
-  if(!s.rangeCount){ el.textContent=''; return; }
-  let txt = '';
-  for(let i=0;i<s.rangeCount;i++){
-    const r = s.getRangeAt(i);
-    if(r.collapsed || !editor.contains(r.commonAncestorContainer)) continue;
-    txt += ' ' + r.cloneContents().textContent;
-  }
-  if(!txt.trim()) txt = editor.contains(s.anchorNode) ? s.toString() : '';
-  const nums = (txt.match(/-?\d[\d,]*(?:\.\d+)?/g)||[]).map(v=>parseFloat(v.replace(/,/g,'')));
-  if(nums.length >= 2){
-    const sum = nums.reduce((a,b)=>a+b,0);
-    el.textContent = `${T('calcCount')} ${nums.length} · ${T('calcSum')} ${(+sum.toFixed(4)).toLocaleString()} · ${T('calcAvg')} ${(+(sum/nums.length).toFixed(2)).toLocaleString()}`;
-  } else el.textContent = '';
-}
-document.addEventListener('selectionchange', ()=>{ updateCalc(); syncTableTools(); });
-editor.addEventListener('mouseup', updateCalc);
-editor.addEventListener('keyup', updateCalc);
+/* 표 편집 버튼 표시용 (드래그 합계 기능은 제거됨) */
+document.addEventListener('selectionchange', ()=>{ syncTableTools(); });
 
 /* ── 표 편집 도구 ── */
 function curCell(){
@@ -898,11 +879,12 @@ $('tSumCol').onclick = ()=>{
     const el = document.createElement(isHead ? 'th' : 'td');
     el.dataset.sum = '1'; el.style.background = '#EDF2FA';
     if(isHead) el.textContent = T('sumLabel');
-    else if(r.dataset.sum) el.innerHTML = '<br>';
     else {
+      /* 아래 합계 행이면 그 행의 열 합계들을 다 더해 전체 총계로 */
       let sum = 0, found = false;
       [...r.cells].forEach(cell=>{ if(!cell.dataset.sum && isNum(cell.textContent)){ sum += numOf(cell.textContent); found = true; } });
       el.style.fontWeight = '600';
+      if(r.dataset.sum) el.style.background = '#DCE6F5';  /* 총계 칸 강조 */
       el.innerHTML = found ? (+sum.toFixed(4)).toLocaleString() : '<br>';
     }
     r.appendChild(el);
@@ -977,7 +959,7 @@ function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/
 
 /* 문서 저장 / 열기 / 인쇄 */
 const DOC_CSS = `body{font-family:'Segoe UI','Malgun Gothic',sans-serif;line-height:1.7;max-width:820px;margin:40px auto;padding:0 40px;color:#22262B;}
-table{border-collapse:collapse;margin:10px 0;width:100%;}td,th{border:1px solid #B9C0CA;padding:6px 9px;}th{background:#F0F3F7;}img{max-width:100%;}
+table{border-collapse:collapse;margin:10px 0;width:100%;}td,th{border:1px solid #B9C0CA;padding:6px 9px;text-align:center;vertical-align:middle;}th{background:#F0F3F7;}img{max-width:100%;}
 .lh{display:flex;align-items:center;gap:20px;padding-bottom:18px;margin-bottom:26px;border-bottom:2px solid #1F4E8C;}
 .lh-logo{width:88px;height:88px;flex-shrink:0;object-fit:contain;}
 .lh-name{font-size:22px;font-weight:700;margin-bottom:4px;}
