@@ -1031,7 +1031,8 @@ async function buildDocx(){
   const children = [];
 
   /* dataURL/일반 URL → {data, w, h} (docx ImageRun용) */
-  async function imgToRun(imgEl, maxWidth){
+  async function imgToRun(imgEl, opts){
+    opts = opts || {};
     try{
       let src = imgEl.getAttribute('src'); if(!src) return null;
       let bytes;
@@ -1043,11 +1044,16 @@ async function buildDocx(){
       } else {
         const resp = await fetch(src); bytes = new Uint8Array(await resp.arrayBuffer());
       }
-      /* 표시 크기 계산 (원본 비율 유지, 지정 최대폭 안에 맞춤) */
       let w = imgEl.naturalWidth || imgEl.width || 300;
       let h = imgEl.naturalHeight || imgEl.height || 200;
-      const maxW = maxWidth || 600;
-      if(w > maxW){ const r = maxW/w; w = maxW; h = Math.round(h*r); }
+      const ratio = h / w;
+      if(opts.fixedWidth){
+        /* 원본 크기와 무관하게 지정 너비로 강제 (로고용) */
+        w = opts.fixedWidth; h = Math.round(opts.fixedWidth * ratio);
+      } else {
+        const maxW = opts.maxWidth || 600;
+        if(w > maxW){ w = maxW; h = Math.round(maxW * ratio); }
+      }
       const m = /^data:image\/(\w+)/.exec(src);
       let type = m ? m[1].toLowerCase() : (/\.png/i.test(src)?'png':/\.gif/i.test(src)?'gif':'jpg');
       if(type==='jpeg') type='jpg';
@@ -1102,7 +1108,7 @@ async function buildDocx(){
   const hasLogo = lhLogoEl && lhLogoEl.style.display!=='none' && lhLogoEl.getAttribute('src');
   if(lhVisible && (lhName || lhEmail || lhPhone || hasLogo)){
     if(hasLogo){
-      const logoRun = await imgToRun(lhLogoEl, 88);
+      const logoRun = await imgToRun(lhLogoEl, {fixedWidth:80});
       if(logoRun) children.push(new D.Paragraph({ children:[logoRun] }));
     }
     if(lhName) children.push(new D.Paragraph({ children:[new D.TextRun({ text:lhName, bold:true, size:36 })] }));
