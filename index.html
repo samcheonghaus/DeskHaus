@@ -10,6 +10,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.11.0/mammoth.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
 <style>
   :root{
     --bg:#EDEFF2; --panel:#FFFFFF; --ink:#22262B; --muted:#6B7482;
@@ -283,7 +284,7 @@
   <button id="btnNewDoc" class="newbtn" data-i18n="btnNewDoc">새 문서</button>
   <button id="btnOpenDoc" data-i18n-title="btnOpenDocT" data-i18n="btnOpenDoc" title="HTML · 워드(.docx) · 텍스트(.txt) 파일 열기">열기</button>
   <button id="btnImportXlsx" data-i18n-title="btnImportXlsxT" data-i18n="btnImportXlsx" title="엑셀(.xlsx) 또는 CSV 파일을 표로 불러옵니다">엑셀·CSV 열기</button>
-  <button id="btnSaveDoc" class="primary" data-i18n="btnSaveDoc">저장 (.html)</button>
+  <button id="btnSaveDoc" class="primary" data-i18n="btnSaveDoc">저장</button>
   <button id="btnPrint" data-i18n="btnPrint">인쇄 / PDF</button>
 </div>
 
@@ -460,6 +461,17 @@
   <div class="btns"><button id="cfNo" data-i18n="btnCancel">취소</button><button class="primary" id="cfYes" data-i18n="btnOk">확인</button></div>
 </dialog>
 
+<!-- 저장 형식 선택 대화상자 -->
+<dialog id="dlgFormat">
+  <h4 data-i18n="dlgFormatTitle">저장 형식 선택</h4>
+  <div class="btns" style="flex-direction:column; gap:8px; align-items:stretch;">
+    <button class="primary" id="fmtHtml" data-i18n="fmtHtmlBtn">HTML (레터헤드 포함, 다시 열어 편집 가능)</button>
+    <button id="fmtDocx" data-i18n="fmtDocxBtn">Word 문서 (.docx)</button>
+    <button id="fmtTxt" data-i18n="fmtTxtBtn">텍스트 (.txt)</button>
+    <button id="fmtCancel" data-i18n="btnCancel" style="margin-top:4px;">취소</button>
+  </div>
+</dialog>
+
 <!-- 파일 이름 대화상자 -->
 <dialog id="dlgSave">
   <h4 data-i18n="dlgSaveTitle">저장할 파일 이름</h4>
@@ -501,7 +513,7 @@ const I18N = {
     tAddRow:'＋행', tDelRow:'－행', tAddCol:'＋열', tDelCol:'－열',
     tSumRow:'Σ 아래 합계', tSumCol:'Σ 우측 합계', tExportXlsx:'엑셀로 저장',
     btnNewDoc:'새 문서', btnOpenDoc:'열기', btnImportXlsx:'엑셀·CSV 열기',
-    btnSaveDoc:'저장 (.html)', btnPrint:'인쇄 / PDF',
+    btnSaveDoc:'저장', btnPrint:'인쇄 / PDF',
     btnNewCanvas:'새 캔버스', btnAddImg:'이미지 추가', btnAddText:'텍스트 추가',
     btnCrop:'자르기', btnCanvasSize:'캔버스 크기', lblBg:'배경', lblZoom:'확대', lblFmt:'저장 형식',
     btnExport:'내보내기', btnApplyDoc:'문서에 적용 ↩',
@@ -525,6 +537,9 @@ const I18N = {
     mSaved:'저장했습니다: ', mSavedShort:'저장했습니다.', mDocSaved:'문서를 저장했습니다.',
     mDocOpened:'문서를 불러왔습니다.', mNewDoc:'새 문서를 시작합니다.', mNewCanvas:'새 캔버스를 시작합니다.',
     mDocxNoMod:'워드(.docx) 변환 모듈을 불러오지 못했습니다 (인터넷 연결 필요).', mOpenFail:'파일 열기 실패: ', btnOpenDocT:'HTML · 워드(.docx) · 텍스트(.txt) 파일 열기',
+    dlgFormatTitle:'저장 형식 선택',
+    fmtHtmlBtn:'HTML (레터헤드 포함, 다시 열어 편집 가능)', fmtDocxBtn:'Word 문서 (.docx)', fmtTxtBtn:'텍스트 (.txt)',
+    mDocxSaveNoMod:'Word 저장 모듈을 불러오지 못했습니다 (인터넷 연결 필요).', mDocxSaveFail:'Word 저장 실패: ',
     mNoLayers:'내보낼 레이어가 없습니다. 먼저 이미지나 텍스트를 추가하세요.',
     mExported:'내보냈습니다.', mExportFail:'내보내기 실패: ',
     mGifMaking:'GIF 생성 중… (배경은 흰색으로 저장됩니다)',
@@ -573,7 +588,7 @@ const I18N = {
     tAddRow:'+Row', tDelRow:'−Row', tAddCol:'+Col', tDelCol:'−Col',
     tSumRow:'Σ Sum below', tSumCol:'Σ Sum right', tExportXlsx:'Save as Excel',
     btnNewDoc:'New', btnOpenDoc:'Open', btnImportXlsx:'Open Excel/CSV',
-    btnSaveDoc:'Save (.html)', btnPrint:'Print / PDF',
+    btnSaveDoc:'Save', btnPrint:'Print / PDF',
     btnNewCanvas:'New canvas', btnAddImg:'Add image', btnAddText:'Add text',
     btnCrop:'Crop', btnCanvasSize:'Canvas size', lblBg:'Background', lblZoom:'Zoom', lblFmt:'Format',
     btnExport:'Export', btnApplyDoc:'Apply to document ↩',
@@ -596,6 +611,9 @@ const I18N = {
     mSaved:'Saved: ', mSavedShort:'Saved.', mDocSaved:'Document saved.',
     mDocOpened:'Document opened.', mNewDoc:'Started a new document.', mNewCanvas:'Started a new canvas.',
     mDocxNoMod:'Could not load the Word (.docx) module (internet required).', mOpenFail:'Failed to open file: ', btnOpenDocT:'Open HTML, Word (.docx), or text (.txt) files',
+    dlgFormatTitle:'Choose a save format',
+    fmtHtmlBtn:'HTML (keeps letterhead, re-openable for editing)', fmtDocxBtn:'Word document (.docx)', fmtTxtBtn:'Plain text (.txt)',
+    mDocxSaveNoMod:'Could not load the Word save module (internet required).', mDocxSaveFail:'Word save failed: ',
     mNoLayers:'No layers to export. Add an image or text first.',
     mExported:'Exported.', mExportFail:'Export failed: ',
     mGifMaking:'Creating GIF… (background is saved as white)',
@@ -976,11 +994,124 @@ function letterheadHTML(){
   const contact = [email, phone].filter(Boolean).map(x=>`<span>${x}</span>`).join('');
   return `<div class="lh">${logo}<div><div class="lh-name">${name}</div><div class="lh-contact">${contact}</div></div></div>`;
 }
-$('btnSaveDoc').onclick = ()=>{
+$('btnSaveDoc').onclick = ()=> $('dlgFormat').showModal();
+$('fmtCancel').onclick = ()=> $('dlgFormat').close();
+/* HTML 저장 */
+$('fmtHtml').onclick = ()=>{
+  $('dlgFormat').close();
   const html = `<!DOCTYPE html><html lang="${LANG}"><head><meta charset="UTF-8"><title>DeskHaus</title><style>${DOC_CSS}</style></head><body>${letterheadHTML()}${editor.innerHTML}</body></html>`;
   download(new Blob([html], {type:'text/html'}), T('fnDoc') + new Date().toISOString().slice(0,10) + '.html');
   msg(T('mDocSaved'));
 };
+/* 텍스트 저장 */
+$('fmtTxt').onclick = ()=>{
+  $('dlgFormat').close();
+  const tmp = document.createElement('div');
+  tmp.innerHTML = letterheadHTML() + editor.innerHTML;
+  /* 표는 셀을 탭으로, 문단은 줄바꿈으로 */
+  tmp.querySelectorAll('tr').forEach(tr=>{ tr.append('\n'); tr.querySelectorAll('td,th').forEach((c,i)=>{ if(i>0) c.prepend('\t'); }); });
+  tmp.querySelectorAll('p,div,h1,h2,h3,br,li').forEach(el=>{ el.append('\n'); });
+  const text = (tmp.textContent||'').replace(/\n{3,}/g,'\n\n').trim();
+  download(new Blob([text], {type:'text/plain;charset=utf-8'}), T('fnDoc') + new Date().toISOString().slice(0,10) + '.txt');
+  msg(T('mDocSaved'));
+};
+/* Word(.docx) 저장 */
+$('fmtDocx').onclick = async ()=>{
+  $('dlgFormat').close();
+  if(typeof docx === 'undefined'){ msg(T('mDocxSaveNoMod')); return; }
+  try{
+    const blob = await buildDocx();
+    await download(blob, T('fnDoc') + new Date().toISOString().slice(0,10) + '.docx');
+    msg(T('mDocSaved'));
+  }catch(err){ msg(T('mDocxSaveFail') + err.message); }
+};
+/* 에디터 HTML → docx 문서 조립 */
+async function buildDocx(){
+  const D = docx;
+  const children = [];
+  const px2half = px => Math.round(parseFloat(px||16) * 1.5);  /* px→half-point 근사 */
+
+  /* 인라인 노드 → TextRun 배열 */
+  function runsFrom(node, inherit){
+    inherit = inherit || {};
+    const runs = [];
+    node.childNodes.forEach(n=>{
+      if(n.nodeType === 3){  /* 텍스트 */
+        if(n.textContent) runs.push(new D.TextRun({ text:n.textContent, bold:inherit.bold, italics:inherit.italic, underline:inherit.underline?{}:undefined, color:inherit.color }));
+      } else if(n.nodeType === 1){
+        const tag = n.tagName.toLowerCase();
+        const inh = Object.assign({}, inherit);
+        if(tag==='b'||tag==='strong') inh.bold=true;
+        if(tag==='i'||tag==='em') inh.italic=true;
+        if(tag==='u') inh.underline=true;
+        if(n.style && n.style.color) inh.color = rgbToHex(n.style.color);
+        if(tag==='br'){ runs.push(new D.TextRun({ break:1 })); return; }
+        runs.push(...runsFrom(n, inh));
+      }
+    });
+    return runs;
+  }
+  /* 표 → docx Table */
+  function tableFrom(tb){
+    const rows = [...tb.rows].map(tr=>{
+      const cells = [...tr.cells].map(c=>{
+        const isHead = c.tagName==='TH';
+        return new D.TableCell({
+          children:[ new D.Paragraph({ alignment:D.AlignmentType.CENTER, children: runsFrom(c, {bold:isHead}) }) ],
+          shading: isHead ? { fill:'F0F3F7' } : (c.dataset && c.dataset.sum ? { fill:'EDF2FA' } : undefined),
+        });
+      });
+      return new D.TableRow({ children:cells });
+    });
+    return new D.Table({ rows, width:{ size:100, type:D.WidthType.PERCENTAGE } });
+  }
+  /* 레터헤드 */
+  const lhName = $('lhName').textContent.trim();
+  const lhEmail = $('lhEmail').textContent.trim();
+  const lhPhone = $('lhPhone').textContent.trim();
+  const lhVisible = !$('letterhead').classList.contains('collapsed');
+  if(lhVisible && (lhName || lhEmail || lhPhone)){
+    if(lhName) children.push(new D.Paragraph({ children:[new D.TextRun({ text:lhName, bold:true, size:36 })] }));
+    const cinfo = [lhEmail, lhPhone].filter(Boolean).join('   ');
+    if(cinfo) children.push(new D.Paragraph({ children:[new D.TextRun({ text:cinfo, size:20, color:'6B7482' })] }));
+    children.push(new D.Paragraph({ border:{ bottom:{ color:'1F4E8C', size:12, style:D.BorderStyle.SINGLE } }, children:[] }));
+    children.push(new D.Paragraph({ children:[] }));
+  }
+  /* 본문 블록 순회 */
+  [...editor.childNodes].forEach(node=>{
+    if(node.nodeType === 3){
+      if(node.textContent.trim()) children.push(new D.Paragraph({ children:[new D.TextRun(node.textContent)] }));
+      return;
+    }
+    if(node.nodeType !== 1) return;
+    const tag = node.tagName.toLowerCase();
+    if(tag==='table'){ children.push(tableFrom(node)); children.push(new D.Paragraph({children:[]})); return; }
+    if(tag==='ul'||tag==='ol'){
+      [...node.children].forEach((li,i)=>{
+        children.push(new D.Paragraph({ children:runsFrom(li), bullet: tag==='ul'?{level:0}:undefined, numbering: tag==='ol'?{reference:'num',level:0}:undefined }));
+      });
+      return;
+    }
+    let heading;
+    if(tag==='h1') heading = D.HeadingLevel.HEADING_1;
+    else if(tag==='h2') heading = D.HeadingLevel.HEADING_2;
+    else if(tag==='h3') heading = D.HeadingLevel.HEADING_3;
+    const align = node.style && node.style.textAlign;
+    const alignment = align==='center'?D.AlignmentType.CENTER : align==='right'?D.AlignmentType.RIGHT : undefined;
+    children.push(new D.Paragraph({ heading, alignment, children: runsFrom(node) }));
+  });
+  if(!children.length) children.push(new D.Paragraph({children:[]}));
+
+  const doc = new D.Document({
+    numbering:{ config:[{ reference:'num', levels:[{ level:0, format:D.LevelFormat.DECIMAL, text:'%1.', alignment:D.AlignmentType.START }] }] },
+    sections:[{ children }],
+  });
+  return await D.Packer.toBlob(doc);
+}
+function rgbToHex(rgb){
+  const m = (rgb||'').match(/\d+/g); if(!m || m.length<3) return undefined;
+  return ((1<<24) + (+m[0]<<16) + (+m[1]<<8) + (+m[2])).toString(16).slice(1).toUpperCase();
+}
 $('btnNewDoc').onclick = async ()=>{
   if(editor.textContent.trim() || editor.querySelector('img,table')){
     if(!await askConfirm(T('cfNewDoc'))) return;
