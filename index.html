@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +7,8 @@
 <title>DeskHaus — 하나로 쓰는 사무 도구</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/hyperformula/dist/hyperformula.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <style>
   :root{
     --bg:#EDEFF2; --panel:#FFFFFF; --ink:#22262B; --muted:#6B7482;
@@ -101,6 +103,11 @@
   }
   #sheetTable td.sel{ outline:2px solid var(--accent); outline-offset:-2px; }
   #sheetTable td.editing{ background:#fff; }
+
+  /* PDF 모드 */
+  #pdfArea{ flex:1; overflow:auto; display:flex; align-items:flex-start; justify-content:center; padding:26px; background:var(--bg); }
+  #pdfCanvas{ background:#fff; box-shadow:0 2px 14px rgba(30,40,60,.12); }
+  #pdfEmpty{ color:var(--muted); font-size:14px; margin-top:80px; }
 
   /* ── 글 모드 ── */
   #docScroll{flex:1; overflow:auto; padding:28px 0 60px;}
@@ -232,8 +239,9 @@
     <div class="tab active" id="tabDoc"><span class="dot"></span><span data-i18n="tabDoc">글</span></div>
     <div class="tab" id="tabImg"><span class="dot"></span><span data-i18n="tabImg">그림</span></div>
     <div class="tab" id="tabSheet"><span class="dot"></span><span data-i18n="tabSheet">표</span></div>
+    <div class="tab" id="tabPdf"><span class="dot"></span><span data-i18n="tabPdf">PDF</span></div>
   </div>
-  <button id="langBtn" title="Language / 언어" style="margin-left:auto; margin-bottom:12px;">한국어</button>
+  <button id="langBtn" title="Language / 언어" style="margin-left:auto; margin-bottom:12px;">EN</button>
 </header>
 
 <!-- ══ 글 모드 툴바 ══ -->
@@ -330,6 +338,29 @@
   <button id="shToDoc" data-i18n="shToDoc" title="현재 표를 문서(글 모드)에 삽입">문서로 보내기 →</button>
 </div>
 
+<!-- ══ PDF 모드 툴바 ══ -->
+<div class="toolbar" id="tbPdf" style="display:none;">
+  <button id="pdfOpen" class="primary" data-i18n="pdfOpen">PDF 열기</button>
+  <button id="pdfAdd" data-i18n="pdfAdd" title="현재 PDF 뒤에 다른 PDF를 이어 붙입니다">PDF 이어붙이기</button>
+  <div class="sep"></div>
+  <button id="pdfPrev" class="icon" title="이전 페이지">◀</button>
+  <span id="pdfPageInfo" style="font-size:13px; color:var(--muted); min-width:78px; text-align:center;">– / –</span>
+  <button id="pdfNext" class="icon" title="다음 페이지">▶</button>
+  <div class="sep"></div>
+  <label class="small" data-i18n="lblZoom">확대</label>
+  <select id="pdfZoom">
+    <option value="0.5">50%</option><option value="0.75">75%</option>
+    <option value="1" selected>100%</option><option value="1.25">125%</option>
+    <option value="1.5">150%</option><option value="2">200%</option>
+  </select>
+  <div class="sep"></div>
+  <button id="pdfToImg" data-i18n="pdfToImg" title="현재 페이지를 그림 모드로 가져와 편집">이 페이지 → 그림</button>
+  <button id="pdfExtractPng" data-i18n="pdfExtractPng" title="현재 페이지를 PNG 이미지로 저장">현재 페이지 PNG 저장</button>
+  <div class="sep"></div>
+  <button id="pdfSavePage" data-i18n="pdfSavePage" title="현재 페이지만 새 PDF로 저장">이 페이지만 PDF 저장</button>
+  <button id="pdfSaveAll" data-i18n="pdfSaveAll" title="현재 PDF 전체를 저장">전체 PDF 저장</button>
+</div>
+
 <main>
   <!-- 글 모드 -->
   <div class="mode active" id="modeDoc">
@@ -395,6 +426,14 @@
       </div>
     </div>
   </div>
+
+  <!-- PDF 모드 -->
+  <div class="mode" id="modePdf">
+    <div id="pdfArea">
+      <div id="pdfEmpty" data-i18n="pdfEmptyMsg">PDF 열기를 눌러 파일을 여세요.</div>
+      <canvas id="pdfCanvas" style="display:none;"></canvas>
+    </div>
+  </div>
 </main>
 
 <footer>
@@ -411,6 +450,8 @@
 <input type="file" id="fileXlsx" accept=".xlsx,.xls,.csv" hidden>
 <input type="file" id="fileLogo" accept="image/*" hidden>
 <input type="file" id="fileSheetOpen" accept=".xlsx,.xls,.csv" hidden>
+<input type="file" id="filePdfOpen" accept=".pdf" hidden>
+<input type="file" id="filePdfAdd" accept=".pdf" hidden>
 
 <!-- 확인 대화상자 -->
 <dialog id="dlgConfirm">
@@ -515,6 +556,14 @@ const I18N = {
     mNewSheet:'새 표를 시작합니다.', cfNewSheet:'현재 표 내용이 모두 지워집니다. 저장하지 않은 내용은 복구할 수 없습니다. 새 표를 시작할까요?',
     mSortedAsc:'오름차순으로 정렬했습니다.', mSortedDesc:'내림차순으로 정렬했습니다.',
     mSheetEmpty:'표가 비어 있습니다.', mSentToDoc:'표를 문서로 보냈습니다. (글 탭에서 확인)',
+    tabPdf:'PDF', statModePdf:'PDF 모드', statHintPdf:'◀ ▶ 로 페이지 이동, 페이지를 그림 모드로 가져와 편집할 수 있습니다',
+    pdfOpen:'PDF 열기', pdfAdd:'PDF 이어붙이기', pdfToImg:'이 페이지 → 그림', pdfExtractPng:'현재 페이지 PNG 저장',
+    pdfSavePage:'이 페이지만 PDF 저장', pdfSaveAll:'전체 PDF 저장', pdfEmptyMsg:'PDF 열기를 눌러 파일을 여세요.',
+    pdfPageLayer:'PDF 페이지',
+    mPdfNoMod:'PDF 모듈을 불러오지 못했습니다 (인터넷 연결 필요).',
+    mPdfOpened:' 을(를) 열었습니다.', mPdfFail:'PDF 처리 실패: ', mPdfOpenFirst:'먼저 PDF를 여세요.',
+    mPdfMerged:'PDF를 이어붙였습니다.', mPdfToImg:'현재 페이지를 그림 모드로 가져왔습니다.',
+    fnPdf:'문서_', fnPdfPage:'페이지',
   },
   en: {
     tabDoc:'Text', tabImg:'Image', brandSub:'· writing and images, in one place',
@@ -577,9 +626,17 @@ const I18N = {
     mNewSheet:'Started a new sheet.', cfNewSheet:'The current sheet will be cleared. Unsaved content cannot be recovered. Start a new sheet?',
     mSortedAsc:'Sorted ascending.', mSortedDesc:'Sorted descending.',
     mSheetEmpty:'The sheet is empty.', mSentToDoc:'Sent the table to the document. (See the Text tab)',
+    tabPdf:'PDF', statModePdf:'PDF mode', statHintPdf:'Use ◀ ▶ to change pages; you can send a page to Image mode to edit it',
+    pdfOpen:'Open PDF', pdfAdd:'Append PDF', pdfToImg:'This page → Image', pdfExtractPng:'Save page as PNG',
+    pdfSavePage:'Save this page as PDF', pdfSaveAll:'Save whole PDF', pdfEmptyMsg:'Click "Open PDF" to open a file.',
+    pdfPageLayer:'PDF page',
+    mPdfNoMod:'Could not load the PDF module (internet required).',
+    mPdfOpened:' opened.', mPdfFail:'PDF processing failed: ', mPdfOpenFirst:'Open a PDF first.',
+    mPdfMerged:'Appended the PDF.', mPdfToImg:'Sent the current page to Image mode.',
+    fnPdf:'document_', fnPdfPage:'page',
   }
 };
-let LANG = 'en';
+let LANG = 'ko';
 const T = k => (I18N[LANG][k] !== undefined ? I18N[LANG][k] : k);
 function applyLang(){
   document.documentElement.lang = LANG;
@@ -678,16 +735,16 @@ function askConfirm(text){
 
 /* 모드 전환 */
 function setMode(m){
-  const modes = { doc:'modeDoc', img:'modeImg', sheet:'modeSheet' };
-  const tabs = { doc:'tabDoc', img:'tabImg', sheet:'tabSheet' };
-  const bars = { doc:'tbDoc', img:'tbImg', sheet:'tbSheet' };
+  const modes = { doc:'modeDoc', img:'modeImg', sheet:'modeSheet', pdf:'modePdf' };
+  const tabs = { doc:'tabDoc', img:'tabImg', sheet:'tabSheet', pdf:'tabPdf' };
+  const bars = { doc:'tbDoc', img:'tbImg', sheet:'tbSheet', pdf:'tbPdf' };
   for(const k in modes){
     $(tabs[k]).classList.toggle('active', k===m);
     $(modes[k]).classList.toggle('active', k===m);
     $(bars[k]).style.display = (k===m) ? 'flex' : 'none';
   }
-  const label = { doc:'statModeDoc', img:'statModeImg', sheet:'statModeSheet' };
-  const hint = { doc:'statHintDoc', img:'statHintImg', sheet:'statHintSheet' };
+  const label = { doc:'statModeDoc', img:'statModeImg', sheet:'statModeSheet', pdf:'statModePdf' };
+  const hint = { doc:'statHintDoc', img:'statHintImg', sheet:'statHintSheet', pdf:'statHintPdf' };
   $('statMode').textContent = T(label[m]);
   $('statHint').textContent = T(hint[m]);
   if(m==='img') render();
@@ -696,6 +753,7 @@ function setMode(m){
 $('tabDoc').onclick = ()=>setMode('doc');
 $('tabImg').onclick = ()=>setMode('img');
 $('tabSheet').onclick = ()=>setMode('sheet');
+$('tabPdf').onclick = ()=>setMode('pdf');
 
 /* ═══════════════ 글 모드 ═══════════════ */
 const editor = $('editor');
@@ -1631,7 +1689,109 @@ $('shToDoc').onclick = ()=>{
   msg(T('mSentToDoc'));
 };
 
-/* English is the default language. The language button can switch to Korean. */
+/* ═══════════════ PDF 모드 ═══════════════ */
+let pdfDoc = null;        // pdf.js 문서 객체 (렌더링용)
+let pdfBytes = null;      // 원본 바이트 (pdf-lib 편집용)
+let pdfPage = 1, pdfTotal = 0, pdfScale = 1;
+let pdfWorkerSet = false;
+
+function setPdfWorker(){
+  if(pdfWorkerSet || typeof pdfjsLib === 'undefined') return;
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  pdfWorkerSet = true;
+}
+async function loadPdf(bytes){
+  if(typeof pdfjsLib === 'undefined'){ msg(T('mPdfNoMod')); return; }
+  setPdfWorker();
+  pdfBytes = bytes.slice(0);  // 편집용 원본 보관
+  pdfDoc = await pdfjsLib.getDocument({data:bytes.slice(0)}).promise;
+  pdfTotal = pdfDoc.numPages; pdfPage = 1;
+  $('pdfEmpty').style.display='none';
+  $('pdfCanvas').style.display='block';
+  await renderPdfPage();
+}
+async function renderPdfPage(){
+  if(!pdfDoc) return;
+  const page = await pdfDoc.getPage(pdfPage);
+  const viewport = page.getViewport({scale: pdfScale * 1.5});  // 1.5=선명도
+  const cv = $('pdfCanvas'), ctx = cv.getContext('2d');
+  cv.width = viewport.width; cv.height = viewport.height;
+  cv.style.width = (viewport.width/1.5)+'px';
+  cv.style.height = (viewport.height/1.5)+'px';
+  await page.render({canvasContext:ctx, viewport}).promise;
+  $('pdfPageInfo').textContent = `${pdfPage} / ${pdfTotal}`;
+}
+$('pdfOpen').onclick = ()=>{
+  if(typeof pdfjsLib === 'undefined'){ msg(T('mPdfNoMod')); return; }
+  $('filePdfOpen').click();
+};
+$('filePdfOpen').onchange = e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=async ()=>{ try{ await loadPdf(new Uint8Array(rd.result)); msg(f.name+T('mPdfOpened')); }catch(err){ msg(T('mPdfFail')+err.message); } };
+  rd.readAsArrayBuffer(f); e.target.value='';
+};
+/* 페이지 이동 */
+$('pdfPrev').onclick = async ()=>{ if(pdfDoc && pdfPage>1){ pdfPage--; await renderPdfPage(); } };
+$('pdfNext').onclick = async ()=>{ if(pdfDoc && pdfPage<pdfTotal){ pdfPage++; await renderPdfPage(); } };
+$('pdfZoom').onchange = async e=>{ pdfScale=+e.target.value; await renderPdfPage(); };
+/* 이어붙이기 (pdf-lib) */
+$('pdfAdd').onclick = ()=>{
+  if(!pdfBytes){ msg(T('mPdfOpenFirst')); return; }
+  if(typeof PDFLib === 'undefined'){ msg(T('mPdfNoMod')); return; }
+  $('filePdfAdd').click();
+};
+$('filePdfAdd').onchange = e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=async ()=>{
+    try{
+      const base=await PDFLib.PDFDocument.load(pdfBytes);
+      const add=await PDFLib.PDFDocument.load(new Uint8Array(rd.result));
+      const pages=await base.copyPages(add, add.getPageIndices());
+      pages.forEach(p=>base.addPage(p));
+      const merged=await base.save();
+      await loadPdf(new Uint8Array(merged));
+      msg(T('mPdfMerged'));
+    }catch(err){ msg(T('mPdfFail')+err.message); }
+  };
+  rd.readAsArrayBuffer(f); e.target.value='';
+};
+/* 현재 페이지 → 그림 모드 */
+$('pdfToImg').onclick = ()=>{
+  if(!pdfDoc){ msg(T('mPdfOpenFirst')); return; }
+  const dataURL = $('pdfCanvas').toDataURL('image/png');
+  layers=[]; selId=null; docImgTarget=null;
+  $('btnApplyDoc').style.display='none';
+  setMode('img');
+  addImageLayer(dataURL, T('pdfPageLayer')+' '+pdfPage);
+  msg(T('mPdfToImg'));
+};
+/* 현재 페이지 PNG 저장 */
+$('pdfExtractPng').onclick = async ()=>{
+  if(!pdfDoc){ msg(T('mPdfOpenFirst')); return; }
+  $('pdfCanvas').toBlob(b=> download(b, T('fnPdfPage')+pdfPage+'_'+new Date().toISOString().slice(0,10)+'.png'), 'image/png');
+};
+/* 현재 페이지만 PDF로 저장 (pdf-lib) */
+$('pdfSavePage').onclick = async ()=>{
+  if(!pdfBytes){ msg(T('mPdfOpenFirst')); return; }
+  try{
+    const src=await PDFLib.PDFDocument.load(pdfBytes);
+    const out=await PDFLib.PDFDocument.create();
+    const [pg]=await out.copyPages(src, [pdfPage-1]);
+    out.addPage(pg);
+    const bytes=await out.save();
+    await download(new Blob([bytes],{type:'application/pdf'}), T('fnPdfPage')+pdfPage+'.pdf');
+  }catch(err){ msg(T('mPdfFail')+err.message); }
+};
+/* 전체 PDF 저장 */
+$('pdfSaveAll').onclick = async ()=>{
+  if(!pdfBytes){ msg(T('mPdfOpenFirst')); return; }
+  await download(new Blob([pdfBytes],{type:'application/pdf'}), T('fnPdf')+new Date().toISOString().slice(0,10)+'.pdf');
+};
+
+/* 브라우저 언어가 한국어가 아니면 영어로 시작 */
+if(!(navigator.language||'').toLowerCase().startsWith('ko')) LANG = 'en';
 loadLetterhead();
 fillWelcome();
 applyLang();
