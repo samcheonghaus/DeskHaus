@@ -804,10 +804,67 @@ $('fileDocImg').onchange = e=>{
   rd.readAsDataURL(f); e.target.value='';
 };
 
-/* 문서 내 이미지 더블클릭 → 그림 모드로 */
+/* ── 문서 이미지 클릭 → 크기 조절 ── */
+let selImg = null;
+const imgBar = document.createElement('div');
+imgBar.id = 'imgSizeBar';
+imgBar.style.cssText = 'position:absolute; display:none; z-index:50; background:#22262B; border-radius:8px; padding:5px 6px; gap:4px; box-shadow:0 4px 14px rgba(0,0,0,.25); align-items:center;';
+imgBar.innerHTML = `
+  <button data-sz="120" style="font-size:12px">S</button>
+  <button data-sz="250" style="font-size:12px">M</button>
+  <button data-sz="450" style="font-size:12px">L</button>
+  <span style="width:1px;height:18px;background:#4A5160;margin:0 2px"></span>
+  <button data-step="-30" title="작게">－</button>
+  <button data-step="30" title="크게">＋</button>
+  <span style="width:1px;height:18px;background:#4A5160;margin:0 2px"></span>
+  <span id="imgSizeLabel" style="color:#AEB6C2;font-size:11px;min-width:42px;text-align:center"></span>`;
+document.body.appendChild(imgBar);
+imgBar.querySelectorAll('button').forEach(b=>{
+  b.style.cssText += 'background:#333A46;color:#fff;border:none;border-radius:5px;padding:3px 8px;cursor:pointer;font-family:inherit;';
+  b.addEventListener('mousedown', ev=> ev.preventDefault());
+});
+function showImgBar(img){
+  selImg = img;
+  const r = img.getBoundingClientRect();
+  imgBar.style.display = 'flex';
+  imgBar.style.left = (window.scrollX + r.left) + 'px';
+  imgBar.style.top = (window.scrollY + r.top - 42) + 'px';
+  updateImgLabel();
+  img.style.outline = '2px solid var(--accent)'; img.style.outlineOffset = '2px';
+}
+function hideImgBar(){
+  if(selImg){ selImg.style.outline=''; selImg.style.outlineOffset=''; }
+  selImg = null; imgBar.style.display='none';
+}
+function updateImgLabel(){
+  if(!selImg) return;
+  $('imgSizeLabel').textContent = Math.round(selImg.getBoundingClientRect().width) + 'px';
+}
+function setImgWidth(px){
+  if(!selImg) return;
+  px = Math.max(30, Math.min(760, px));
+  selImg.style.width = px + 'px';
+  selImg.style.height = 'auto';
+  showImgBar(selImg);  /* 바 위치 갱신 */
+}
+imgBar.querySelectorAll('[data-sz]').forEach(b=> b.onclick = ()=> setImgWidth(+b.dataset.sz));
+imgBar.querySelectorAll('[data-step]').forEach(b=> b.onclick = ()=> setImgWidth(selImg.getBoundingClientRect().width + (+b.dataset.step)));
+
+editor.addEventListener('click', e=>{
+  if(e.target.tagName === 'IMG'){ showImgBar(e.target); }
+  else if(selImg && e.target !== selImg){ hideImgBar(); }
+});
+/* 스크롤/다른 곳 클릭 시 숨김 */
+document.addEventListener('click', e=>{
+  if(selImg && !editor.contains(e.target) && !imgBar.contains(e.target)) hideImgBar();
+});
+$('docScroll').addEventListener('scroll', ()=>{ if(selImg) showImgBar(selImg); });
+
+/* 문서 내 이미지 더블클릭 → 그림 모드로 (레이어 편집) */
 let docImgTarget = null;
 editor.addEventListener('dblclick', e=>{
   if(e.target.tagName==='IMG'){
+    hideImgBar();
     docImgTarget = e.target;
     openImageEditor(e.target.src);
   }
@@ -1047,6 +1104,11 @@ async function buildDocx(){
       let w = imgEl.naturalWidth || imgEl.width || 300;
       let h = imgEl.naturalHeight || imgEl.height || 200;
       const ratio = h / w;
+      /* 사용자가 문서에서 크기를 조절했으면(style.width) 그 값을 우선 */
+      const styleW = parseFloat(imgEl.style && imgEl.style.width);
+      if(!opts.fixedWidth && styleW && styleW > 0){
+        w = styleW; h = Math.round(styleW * ratio);
+      }
       if(opts.fixedWidth){
         /* 원본 크기와 무관하게 지정 너비로 강제 (로고용) */
         w = opts.fixedWidth; h = Math.round(opts.fixedWidth * ratio);
