@@ -1107,13 +1107,38 @@ async function buildDocx(){
   const lhLogoEl = $('lhLogo');
   const hasLogo = lhLogoEl && lhLogoEl.style.display!=='none' && lhLogoEl.getAttribute('src');
   if(lhVisible && (lhName || lhEmail || lhPhone || hasLogo)){
-    if(hasLogo){
-      const logoRun = await imgToRun(lhLogoEl, {fixedWidth:80});
-      if(logoRun) children.push(new D.Paragraph({ children:[logoRun] }));
-    }
-    if(lhName) children.push(new D.Paragraph({ children:[new D.TextRun({ text:lhName, bold:true, size:36 })] }));
+    /* 정보 칸(오른쪽): 회사명 + 연락처 */
+    const infoParas = [];
+    if(lhName) infoParas.push(new D.Paragraph({ children:[new D.TextRun({ text:lhName, bold:true, size:36 })] }));
     const cinfo = [lhEmail, lhPhone].filter(Boolean).join('   ');
-    if(cinfo) children.push(new D.Paragraph({ children:[new D.TextRun({ text:cinfo, size:20, color:'6B7482' })] }));
+    if(cinfo) infoParas.push(new D.Paragraph({ children:[new D.TextRun({ text:cinfo, size:20, color:'6B7482' })] }));
+    if(!infoParas.length) infoParas.push(new D.Paragraph({ children:[] }));
+
+    if(hasLogo){
+      /* 로고가 있으면: 테두리 없는 2칸 표 (로고 | 정보) */
+      const logoRun = await imgToRun(lhLogoEl, {fixedWidth:80});
+      const logoCell = new D.TableCell({
+        width:{ size:18, type:D.WidthType.PERCENTAGE },
+        margins:{ right:180 },
+        verticalAlign:D.VerticalAlign.CENTER,
+        children:[ new D.Paragraph({ children: logoRun ? [logoRun] : [] }) ],
+      });
+      const infoCell = new D.TableCell({
+        width:{ size:82, type:D.WidthType.PERCENTAGE },
+        verticalAlign:D.VerticalAlign.CENTER,
+        children: infoParas,
+      });
+      const noBorder = { style:D.BorderStyle.NONE, size:0, color:'FFFFFF' };
+      children.push(new D.Table({
+        width:{ size:100, type:D.WidthType.PERCENTAGE },
+        borders:{ top:noBorder, bottom:noBorder, left:noBorder, right:noBorder, insideHorizontal:noBorder, insideVertical:noBorder },
+        rows:[ new D.TableRow({ children:[logoCell, infoCell] }) ],
+      }));
+    } else {
+      /* 로고 없으면 정보만 */
+      infoParas.forEach(p=> children.push(p));
+    }
+    /* 파란 밑줄 구분선 */
     children.push(new D.Paragraph({ border:{ bottom:{ color:'1F4E8C', size:12, style:D.BorderStyle.SINGLE } }, children:[] }));
     children.push(new D.Paragraph({ children:[] }));
   }
