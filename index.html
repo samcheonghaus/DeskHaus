@@ -1029,48 +1029,82 @@ $('fmtDocx').onclick = async ()=>{
 async function buildDocx(){
   const D = docx;
   const children = [];
-  const px2half = px => Math.round(parseFloat(px||16) * 1.5);  /* px→half-point 근사 */
 
-  /* 인라인 노드 → TextRun 배열 */
-  function runsFrom(node, inherit){
+  /* dataURL/일반 URL → {data, w, h} (docx ImageRun용) */
+  async function imgToRun(imgEl){
+    try{
+      let src = imgEl.getAttribute('src'); if(!src) return null;
+      let bytes;
+      if(src.startsWith('data:')){
+        const b64 = src.split(',')[1];
+        const bin = atob(b64); const arr = new Uint8Array(bin.length);
+        for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+        bytes = arr;
+      } else {
+        const resp = await fetch(src); bytes = new Uint8Array(await resp.arrayBuffer());
+      }
+      /* 표시 크기 계산 (원본 비율 유지, 문서 폭 안에 맞춤) */
+      let w = imgEl.naturalWidth || imgEl.width || 300;
+      let h = imgEl.naturalHeight || imgEl.height || 200;
+      const maxW = 600;
+      if(w > maxW){ const r = maxW/w; w = maxW; h = Math.round(h*r); }
+      const m = /^data:image\/(\w+)/.exec(src);
+      let type = m ? m[1].toLowerCase() : (/\.png/i.test(src)?'png':/\.gif/i.test(src)?'gif':'jpg');
+      if(type==='jpeg') type='jpg';
+      if(!['png','jpg','gif','bmp'].includes(type)) type='png';  /* webp 등은 png로 표기(대부분 브라우저가 관대하게 처리) */
+      return new D.ImageRun({ data:bytes, transformation:{ width:Math.round(w), height:Math.round(h) }, type });
+    }catch(e){ return null; }
+  }
+
+  /* 인라인 노드 → TextRun/ImageRun 배열 (이미지 포함) */
+  async function runsFrom(node, inherit){
     inherit = inherit || {};
     const runs = [];
-    node.childNodes.forEach(n=>{
-      if(n.nodeType === 3){  /* 텍스트 */
+    for(const n of node.childNodes){
+      if(n.nodeType === 3){
         if(n.textContent) runs.push(new D.TextRun({ text:n.textContent, bold:inherit.bold, italics:inherit.italic, underline:inherit.underline?{}:undefined, color:inherit.color }));
       } else if(n.nodeType === 1){
         const tag = n.tagName.toLowerCase();
+        if(tag==='img'){ const ir = await imgToRun(n); if(ir) runs.push(ir); continue; }
+        if(tag==='br'){ runs.push(new D.TextRun({ break:1 })); continue; }
         const inh = Object.assign({}, inherit);
         if(tag==='b'||tag==='strong') inh.bold=true;
         if(tag==='i'||tag==='em') inh.italic=true;
         if(tag==='u') inh.underline=true;
         if(n.style && n.style.color) inh.color = rgbToHex(n.style.color);
-        if(tag==='br'){ runs.push(new D.TextRun({ break:1 })); return; }
-        runs.push(...runsFrom(n, inh));
+        runs.push(...await runsFrom(n, inh));
       }
-    });
+    }
     return runs;
   }
   /* 표 → docx Table */
-  function tableFrom(tb){
-    const rows = [...tb.rows].map(tr=>{
-      const cells = [...tr.cells].map(c=>{
+  async function tableFrom(tb){
+    const rows = [];
+    for(const tr of [...tb.rows]){
+      const cells = [];
+      for(const c of [...tr.cells]){
         const isHead = c.tagName==='TH';
-        return new D.TableCell({
-          children:[ new D.Paragraph({ alignment:D.AlignmentType.CENTER, children: runsFrom(c, {bold:isHead}) }) ],
+        cells.push(new D.TableCell({
+          children:[ new D.Paragraph({ alignment:D.AlignmentType.CENTER, children: await runsFrom(c, {bold:isHead}) }) ],
           shading: isHead ? { fill:'F0F3F7' } : (c.dataset && c.dataset.sum ? { fill:'EDF2FA' } : undefined),
-        });
-      });
-      return new D.TableRow({ children:cells });
-    });
+        }));
+      }
+      rows.push(new D.TableRow({ children:cells }));
+    }
     return new D.Table({ rows, width:{ size:100, type:D.WidthType.PERCENTAGE } });
   }
-  /* 레터헤드 */
+  /* 레터헤드 (로고 이미지 포함) */
   const lhName = $('lhName').textContent.trim();
   const lhEmail = $('lhEmail').textContent.trim();
   const lhPhone = $('lhPhone').textContent.trim();
   const lhVisible = !$('letterhead').classList.contains('collapsed');
-  if(lhVisible && (lhName || lhEmail || lhPhone)){
+  const lhLogoEl = $('lhLogo');
+  const hasLogo = lhLogoEl && lhLogoEl.style.display!=='none' && lhLogoEl.getAttribute('src');
+  if(lhVisible && (lhName || lhEmail || lhPhone || hasLogo)){
+    if(hasLogo){
+      const logoRun = await imgToRun(lhLogoEl);
+      if(logoRun) children.push(new D.Paragraph({ children:[logoRun] }));
+    }
     if(lhName) children.push(new D.Paragraph({ children:[new D.TextRun({ text:lhName, bold:true, size:36 })] }));
     const cinfo = [lhEmail, lhPhone].filter(Boolean).join('   ');
     if(cinfo) children.push(new D.Paragraph({ children:[new D.TextRun({ text:cinfo, size:20, color:'6B7482' })] }));
@@ -1078,19 +1112,19 @@ async function buildDocx(){
     children.push(new D.Paragraph({ children:[] }));
   }
   /* 본문 블록 순회 */
-  [...editor.childNodes].forEach(node=>{
+  for(const node of [...editor.childNodes]){
     if(node.nodeType === 3){
       if(node.textContent.trim()) children.push(new D.Paragraph({ children:[new D.TextRun(node.textContent)] }));
-      return;
+      continue;
     }
-    if(node.nodeType !== 1) return;
+    if(node.nodeType !== 1) continue;
     const tag = node.tagName.toLowerCase();
-    if(tag==='table'){ children.push(tableFrom(node)); children.push(new D.Paragraph({children:[]})); return; }
+    if(tag==='table'){ children.push(await tableFrom(node)); children.push(new D.Paragraph({children:[]})); continue; }
+    if(tag==='img'){ const ir=await imgToRun(node); if(ir) children.push(new D.Paragraph({ children:[ir] })); continue; }
     if(tag==='ul'||tag==='ol'){
-      [...node.children].forEach((li,i)=>{
-        children.push(new D.Paragraph({ children:runsFrom(li), bullet: tag==='ul'?{level:0}:undefined, numbering: tag==='ol'?{reference:'num',level:0}:undefined }));
-      });
-      return;
+      for(const li of [...node.children])
+        children.push(new D.Paragraph({ children:await runsFrom(li), bullet: tag==='ul'?{level:0}:undefined, numbering: tag==='ol'?{reference:'num',level:0}:undefined }));
+      continue;
     }
     let heading;
     if(tag==='h1') heading = D.HeadingLevel.HEADING_1;
@@ -1098,8 +1132,8 @@ async function buildDocx(){
     else if(tag==='h3') heading = D.HeadingLevel.HEADING_3;
     const align = node.style && node.style.textAlign;
     const alignment = align==='center'?D.AlignmentType.CENTER : align==='right'?D.AlignmentType.RIGHT : undefined;
-    children.push(new D.Paragraph({ heading, alignment, children: runsFrom(node) }));
-  });
+    children.push(new D.Paragraph({ heading, alignment, children: await runsFrom(node) }));
+  }
   if(!children.length) children.push(new D.Paragraph({children:[]}));
 
   const doc = new D.Document({
