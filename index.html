@@ -2107,8 +2107,14 @@ $('pdfDelPage').onclick = async ()=>{
   }catch(err){ msg(T('mPdfFail') + err.message); }
 };
 
-/* 브라우저 언어가 한국어가 아니면 영어로 시작 */
-if(!(navigator.language||'').toLowerCase().startsWith('ko')) LANG = 'en';
+/* URL의 ?lang=en / ?lang=ko를 최우선 적용하고, 없으면 브라우저 기본 언어를 따름 */
+const requestedLang = new URLSearchParams(window.location.search).get('lang');
+if(requestedLang === 'en' || requestedLang === 'ko') {
+  LANG = requestedLang;
+} else {
+  const browserLang = ((navigator.languages && navigator.languages[0]) || navigator.language || '').toLowerCase();
+  LANG = browserLang.startsWith('ko') ? 'ko' : 'en';
+}
 loadLetterhead();
 fillWelcome();
 applyLang();
