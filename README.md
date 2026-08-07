@@ -17,6 +17,7 @@ PDF 보기/편집 · 프레젠테이션(파워포인트 기초)을
 - Σ 아래 합계 / Σ 우측 합계 — 표의 숫자를 자동 합산한 행·열 추가, 재클릭 시 재계산
 - 숫자를 드래그 선택하면 상태 바에 개수·합계·평균 자동 표시
 - 이미지 삽입 및 크기·정렬 조절, 워드(.docx)·HTML·텍스트 저장/열기, 인쇄 및 PDF 저장
+- 한글 문서(.hwpx) 열기 — 문단·표(셀 병합 포함)·이미지를 가져옵니다 (서식은 단순화)
 
 **그림 모드 (이미지)**
 - 레이어 기반 편집: 이동, 크기 조절, 투명도, 순서 변경, 표시/숨김, 이름 변경
@@ -78,6 +79,7 @@ neu build --release
 - 워드 입출력: [mammoth.js](https://github.com/mwilliamson/mammoth.js) · [docx](https://github.com/dolanmiu/docx) (MIT, CDN 로드)
 - PDF 렌더링/편집: [PDF.js](https://mozilla.github.io/pdf.js/) (Apache-2.0) · [pdf-lib](https://pdf-lib.js.org) (MIT, CDN 로드)
 - PPTX 읽기/쓰기: [JSZip](https://stuk.github.io/jszip/) (MIT) · [PptxGenJS](https://gitbrent.github.io/PptxGenJS/) (MIT, CDN 로드)
+- 한글(.hwpx) 읽기: JSZip으로 OWPML(XML)을 직접 해석 — 별도 라이브러리 없음
 - GIF 내보내기: [gif.js](https://github.com/jnordberg/gif.js) (MIT, CDN 로드)
 - 데스크톱 포장: [Neutralinojs](https://neutralino.js.org) (MIT)
 - 모든 데이터는 사용자 PC에만 저장됩니다 — 서버 전송 없음
@@ -111,6 +113,7 @@ No server, no installation.
 - Σ sum row / Σ sum column — auto-sums the numbers in a table; click again to recalculate
 - Select numbers by dragging to see count · sum · average in the status bar
 - Insert and resize/align images; open and save Word (.docx), HTML, and text; print / save as PDF
+- Open Korean HWPX (.hwpx) documents — imports paragraphs, tables (with merged cells), and images (formatting simplified)
 
 **Image mode**
 - Layer-based editing: move, resize, opacity, reorder, show/hide, rename
@@ -172,6 +175,7 @@ in the same folder and run the exe.
 - Word I/O: [mammoth.js](https://github.com/mwilliamson/mammoth.js) · [docx](https://github.com/dolanmiu/docx) (MIT, CDN)
 - PDF rendering/editing: [PDF.js](https://mozilla.github.io/pdf.js/) (Apache-2.0) · [pdf-lib](https://pdf-lib.js.org) (MIT, CDN)
 - PPTX read/write: [JSZip](https://stuk.github.io/jszip/) (MIT) · [PptxGenJS](https://gitbrent.github.io/PptxGenJS/) (MIT, CDN)
+- HWPX (.hwpx) reading: OWPML (XML) parsed directly with JSZip — no extra library
 - GIF export: [gif.js](https://github.com/jnordberg/gif.js) (MIT, CDN)
 - Desktop packaging: [Neutralinojs](https://neutralino.js.org) (MIT)
 - All data stays on the user's PC — nothing is sent to a server

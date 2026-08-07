@@ -318,7 +318,7 @@
   <button class="icon" data-cmd="redo" title="다시 실행">↷</button>
   <div class="sep"></div>
   <button id="btnNewDoc" class="newbtn" data-i18n="btnNewDoc">새 문서</button>
-  <button id="btnOpenDoc" data-i18n-title="btnOpenDocT" data-i18n="btnOpenDoc" title="HTML · 워드(.docx) · 텍스트(.txt) 파일 열기">열기</button>
+  <button id="btnOpenDoc" data-i18n-title="btnOpenDocT" data-i18n="btnOpenDoc" title="HTML · 워드(.docx) · 한글(.hwpx) · 텍스트(.txt) 파일 열기">열기</button>
   <button id="btnImportXlsx" data-i18n-title="btnImportXlsxT" data-i18n="btnImportXlsx" title="엑셀(.xlsx) 또는 CSV 파일을 표로 불러옵니다">엑셀·CSV 열기</button>
   <button id="btnSaveDoc" class="primary" data-i18n="btnSaveDoc">저장</button>
   <button id="btnPrint" data-i18n="btnPrint">인쇄 / PDF</button>
@@ -556,7 +556,7 @@
 <!-- 숨김 파일 입력 -->
 <input type="file" id="fileDocImg" accept="image/*" hidden>
 <input type="file" id="fileLayerImg" accept="image/*" hidden>
-<input type="file" id="fileOpenDoc" accept=".html,.htm,.docx,.txt" hidden>
+<input type="file" id="fileOpenDoc" accept=".html,.htm,.docx,.txt,.hwpx" hidden>
 <input type="file" id="fileXlsx" accept=".xlsx,.xls,.csv" hidden>
 <input type="file" id="fileLogo" accept="image/*" hidden>
 <input type="file" id="fileSheetOpen" accept=".xlsx,.xls,.csv" hidden>
@@ -646,7 +646,8 @@ const I18N = {
     /* JS 메시지 */
     mSaved:'저장했습니다: ', mSavedShort:'저장했습니다.', mDocSaved:'문서를 저장했습니다.',
     mDocOpened:'문서를 불러왔습니다.', mNewDoc:'새 문서를 시작합니다.', mNewCanvas:'새 캔버스를 시작합니다.',
-    mDocxNoMod:'워드(.docx) 변환 모듈을 불러오지 못했습니다 (인터넷 연결 필요).', mOpenFail:'파일 열기 실패: ', btnOpenDocT:'HTML · 워드(.docx) · 텍스트(.txt) 파일 열기',
+    mDocxNoMod:'워드(.docx) 변환 모듈을 불러오지 못했습니다 (인터넷 연결 필요).', mOpenFail:'파일 열기 실패: ', btnOpenDocT:'HTML · 워드(.docx) · 한글(.hwpx) · 텍스트(.txt) 파일 열기',
+    mHwpxNote:'(한글 문서는 문단·표·이미지만 가져오며, 서식은 단순화됩니다)',
     dlgFormatTitle:'저장 형식 선택',
     fmtHtmlBtn:'HTML (레터헤드 포함, 다시 열어 편집 가능)', fmtDocxBtn:'Word 문서 (.docx)', fmtTxtBtn:'텍스트 (.txt)',
     mDocxSaveNoMod:'Word 저장 모듈을 불러오지 못했습니다 (인터넷 연결 필요).', mDocxSaveFail:'Word 저장 실패: ',
@@ -746,7 +747,8 @@ const I18N = {
     lyUpT:'Bring forward', lyDownT:'Send backward', lyRotT:'Rotate 90° clockwise', lyFlipT:'Flip horizontally',
     mSaved:'Saved: ', mSavedShort:'Saved.', mDocSaved:'Document saved.',
     mDocOpened:'Document opened.', mNewDoc:'Started a new document.', mNewCanvas:'Started a new canvas.',
-    mDocxNoMod:'Could not load the Word (.docx) module (internet required).', mOpenFail:'Failed to open file: ', btnOpenDocT:'Open HTML, Word (.docx), or text (.txt) files',
+    mDocxNoMod:'Could not load the Word (.docx) module (internet required).', mOpenFail:'Failed to open file: ', btnOpenDocT:'Open HTML, Word (.docx), HWPX (.hwpx), or text (.txt) files',
+    mHwpxNote:'(HWPX import keeps paragraphs, tables, and images; formatting is simplified)',
     dlgFormatTitle:'Choose a save format',
     fmtHtmlBtn:'HTML (keeps letterhead, re-openable for editing)', fmtDocxBtn:'Word document (.docx)', fmtTxtBtn:'Plain text (.txt)',
     mDocxSaveNoMod:'Could not load the Word save module (internet required).', mDocxSaveFail:'Word save failed: ',
@@ -1447,6 +1449,120 @@ $('btnNewDoc').onclick = async ()=>{
   editor.focus();
   msg(T('mNewDoc'));
 };
+/* ── 한글 .hwpx 열기 (JSZip으로 직접 해석 — 문단·표·이미지) ── */
+async function importHwpx(buf){
+  if(typeof JSZip === 'undefined') throw new Error(T('mDocxNoMod'));
+  const zip = await JSZip.loadAsync(buf);
+  const parser = new DOMParser();
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const MIME = {png:'image/png', jpg:'image/jpeg', jpeg:'image/jpeg', gif:'image/gif', bmp:'image/bmp', webp:'image/webp'};
+
+  /* 매니페스트(content.hpf): 이미지 id → 파일 경로·형식 */
+  const items = {};
+  const hpf = zip.file('Contents/content.hpf');
+  if(hpf){
+    const mx = parser.parseFromString(await hpf.async('string'), 'application/xml');
+    [...mx.getElementsByTagName('*')].filter(n => n.localName === 'item').forEach(it => {
+      const id = it.getAttribute('id');
+      if(id) items[id] = { href: it.getAttribute('href'), type: it.getAttribute('media-type') };
+    });
+  }
+
+  /* pic 노드 → <img> (BinData의 이미지를 dataURL로) */
+  async function imgTag(node){
+    const img = [...node.getElementsByTagName('*')].find(n => n.localName === 'img');
+    const rid = img && img.getAttribute('binaryItemIDRef');
+    if(!rid) return '';
+    let path = items[rid] && items[rid].href;
+    if(path) path = path.replace(/^\.\//, '');
+    if(!path || !zip.file(path)){
+      const low = rid.toLowerCase();
+      path = Object.keys(zip.files).find(k => /^BinData\//i.test(k) && k.toLowerCase().includes(low));
+    }
+    if(!path || !zip.file(path)) return '';
+    const ext = path.split('.').pop().toLowerCase();
+    const mime = MIME[ext] || (items[rid] && items[rid].type);
+    if(!mime || !mime.startsWith('image/')) return '';
+    const b64 = await zip.file(path).async('base64');
+    return `<img src="data:${mime};base64,${b64}">`;
+  }
+
+  /* 표 → HTML table (셀 병합 포함, 중첩 표는 생략) */
+  function nearestUp(n, names){
+    let a = n.parentNode;
+    while(a && !names.includes(a.localName)) a = a.parentNode;
+    return a;
+  }
+  async function tblHtml(tbl){
+    let h = '<table>';
+    const rows = [...tbl.getElementsByTagName('*')].filter(n => n.localName === 'tr' && nearestUp(n, ['tbl']) === tbl);
+    for(const tr of rows){
+      h += '<tr>';
+      const cells = [...tr.getElementsByTagName('*')].filter(n => n.localName === 'tc' && nearestUp(n, ['tr']) === tr);
+      for(const tc of cells){
+        const span = [...tc.children].find(c => c.localName === 'cellSpan');
+        const cs = span ? (+span.getAttribute('colSpan') || 1) : 1;
+        const rs = span ? (+span.getAttribute('rowSpan') || 1) : 1;
+        const ps = [...tc.getElementsByTagName('*')].filter(n => n.localName === 'p' && nearestUp(n, ['tc','tbl']) === tc);
+        const txt = ps.map(p =>
+          [...p.getElementsByTagName('*')].filter(n => n.localName === 't').map(t => esc(t.textContent)).join('')
+        ).join('<br>');
+        h += `<td${cs>1 ? ` colspan="${cs}"` : ''}${rs>1 ? ` rowspan="${rs}"` : ''}>${txt || '<br>'}</td>`;
+      }
+      h += '</tr>';
+    }
+    return h + '</table>';
+  }
+
+  /* 문단 → HTML (글·표·이미지를 원래 순서대로) */
+  async function paraHtml(p){
+    let out = '', text = '';
+    const flush = () => { if(text !== ''){ out += '<p>' + text + '</p>'; text = ''; } };
+    for(const run of [...p.children]){
+      if(run.localName !== 'run') continue;
+      for(const ch of [...run.children]){
+        const ln = ch.localName;
+        if(ln === 't'){
+          for(const nd of [...ch.childNodes]){
+            if(nd.nodeType === 3) text += esc(nd.nodeValue);
+            else if(nd.localName === 'lineBreak') text += '<br>';
+            else if(nd.textContent) text += esc(nd.textContent);
+          }
+        }else if(ln === 'tbl'){ flush(); out += await tblHtml(ch); }
+        else if(ln === 'pic'){ flush(); const t = await imgTag(ch); if(t) out += '<p>' + t + '</p>'; }
+        else{
+          /* 글상자·컨테이너 등: 안쪽의 표/그림/글을 추출 */
+          const inner = [...ch.getElementsByTagName('*')];
+          const tb = inner.find(n => n.localName === 'tbl');
+          const pc = inner.find(n => n.localName === 'pic');
+          if(tb){ flush(); out += await tblHtml(tb); }
+          else if(pc){ flush(); const t = await imgTag(pc); if(t) out += '<p>' + t + '</p>'; }
+          else{
+            const ts = inner.filter(n => n.localName === 't').map(t => esc(t.textContent)).join(' ');
+            if(ts.trim()) text += (text ? ' ' : '') + ts;
+          }
+        }
+      }
+    }
+    if(text !== '') out += '<p>' + text + '</p>';
+    return out || '<p><br></p>';
+  }
+
+  /* 본문 섹션들을 순서대로 처리 */
+  const secs = Object.keys(zip.files)
+    .filter(n => /^Contents\/section\d+\.xml$/.test(n))
+    .sort((a,b) => +a.match(/(\d+)\.xml/)[1] - +b.match(/(\d+)\.xml/)[1]);
+  if(!secs.length) throw new Error('.hwpx');
+  let html = '';
+  for(const s of secs){
+    const xml = parser.parseFromString(await zip.file(s).async('string'), 'application/xml');
+    for(const p of [...xml.documentElement.children]){
+      if(p.localName === 'p') html += await paraHtml(p);
+    }
+  }
+  return html || '<p><br></p>';
+}
+
 $('btnOpenDoc').onclick = ()=> $('fileOpenDoc').click();
 $('fileOpenDoc').onchange = e=>{
   const f = e.target.files[0]; if(!f) return;
@@ -1458,6 +1574,15 @@ $('fileOpenDoc').onchange = e=>{
       mammoth.convertToHtml({arrayBuffer: rd.result})
         .then(res=>{ editor.innerHTML = res.value || '<p><br></p>'; editor.dataset.welcome='0'; msg(T('mDocOpened')); })
         .catch(err=> msg(T('mOpenFail') + err.message));
+    };
+    rd.readAsArrayBuffer(f);
+  } else if(name.endsWith('.hwpx')){
+    rd.onload = async ()=>{
+      try{
+        editor.innerHTML = await importHwpx(rd.result);
+        editor.dataset.welcome='0';
+        msg(T('mDocOpened') + ' ' + T('mHwpxNote'));
+      }catch(err){ msg(T('mOpenFail') + (err.message || err)); }
     };
     rd.readAsArrayBuffer(f);
   } else if(name.endsWith('.txt')){
