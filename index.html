@@ -12,6 +12,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.11.0/mammoth.browser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.min.js"></script>
 <style>
   :root{
     --bg:#EDEFF2; --panel:#FFFFFF; --ink:#22262B; --muted:#6B7482;
@@ -210,6 +212,34 @@
   #layerCtrl input[type=range]{flex:1;}
   #layerCtrl .row button{flex:1; padding:4px 0;}
 
+  /* ── PPT(프레젠테이션) 모드 ── */
+  #ppWrap{flex:1; display:flex; overflow:hidden;}
+  #ppList{width:172px; background:var(--panel); border-right:1px solid var(--line); overflow:auto; padding:10px; flex-shrink:0;}
+  .ppThumb{position:relative; margin-bottom:10px; cursor:pointer; border:2px solid var(--line); border-radius:6px; overflow:hidden; background:#fff;}
+  .ppThumb:hover{border-color:#AEB6C2;}
+  .ppThumb.sel{border-color:var(--accent);}
+  .ppThumbNum{position:absolute; top:2px; left:4px; z-index:2; font-size:11px; color:var(--muted); background:rgba(255,255,255,.8); padding:0 4px; border-radius:4px;}
+  .ppMiniBox{width:144px; height:81px; position:relative; overflow:hidden; pointer-events:none;}
+  .ppMini{width:960px; height:540px; position:absolute; top:0; left:0; transform-origin:top left; overflow:hidden;}
+  #ppMain{flex:1; display:flex; flex-direction:column; overflow:hidden;}
+  #ppStageArea{flex:1; overflow:auto; display:flex; padding:24px; background:var(--bg);}
+  #ppStageBox{position:relative; flex-shrink:0; margin:auto; box-shadow:0 2px 14px rgba(30,40,60,.14);}
+  #ppStage{width:960px; height:540px; position:absolute; top:0; left:0; transform-origin:top left; background:#fff; overflow:hidden;}
+  .ppEl{cursor:move; user-select:none;}
+  #ppStage .ppEl.sel{outline:2px solid var(--accent); outline-offset:0;}
+  #ppStage .ppEl[contenteditable="true"]{cursor:text; user-select:text; outline:2px dashed var(--accent);}
+  .pph{position:absolute; right:-8px; bottom:-8px; width:15px; height:15px; background:var(--accent); border:2px solid #fff; border-radius:3px; cursor:nwse-resize;}
+  #ppNotes{height:64px; resize:none; border:none; border-top:1px solid var(--line); padding:8px 14px; font-family:inherit; font-size:13px; color:var(--ink); background:var(--panel); outline:none; flex-shrink:0;}
+  #ppShow{position:fixed; inset:0; background:#000; z-index:1000; display:none; align-items:center; justify-content:center;}
+  #ppShowSlide{position:relative; overflow:hidden; cursor:pointer;}
+  #ppShowSlide>div{position:absolute; top:0; left:0;}
+  #ppShowSlide .ppEl{cursor:pointer;}
+  #ppShowBar{position:fixed; bottom:14px; left:50%; transform:translateX(-50%); display:flex; gap:8px; align-items:center; background:rgba(30,34,40,.88); border-radius:10px; padding:6px 10px; opacity:.35; transition:opacity .2s; z-index:1001;}
+  #ppShowBar:hover{opacity:1;}
+  #ppShowBar button{background:#333A46; color:#fff; border:none;}
+  #ppShowBar button:hover{background:#4A5160; color:#fff;}
+  #ppShowNum{color:#D5DAE1; font-size:13px; min-width:60px; text-align:center;}
+
   /* 다이얼로그 */
   dialog{
     border:1px solid var(--line); border-radius:var(--radius); padding:20px 22px;
@@ -230,7 +260,7 @@
     #docScroll{overflow:visible; padding:0;}
     .page{border:none; box-shadow:none; width:auto; min-height:auto; padding:0; margin:0;}
     body{overflow:visible;}
-    #modeImg,#modeSheet,#modePdf{display:none !important;}
+    #modeImg,#modeSheet,#modePdf,#modePpt,#ppShow{display:none !important;}
     #modeDoc{display:block !important;}
     #lhToggle{display:none !important;}
     #lhLogoBox{border:none !important;}
@@ -247,6 +277,7 @@
     <div class="tab" id="tabImg"><span class="dot"></span><span data-i18n="tabImg">그림</span></div>
     <div class="tab" id="tabSheet"><span class="dot"></span><span data-i18n="tabSheet">표</span></div>
     <div class="tab" id="tabPdf"><span class="dot"></span><span data-i18n="tabPdf">PDF</span></div>
+    <div class="tab" id="tabPpt"><span class="dot"></span><span data-i18n="tabPpt">PPT</span></div>
   </div>
   <button id="langBtn" title="Language / 언어" style="margin-left:auto; margin-bottom:12px;">EN</button>
 </header>
@@ -369,6 +400,53 @@
   <button id="pdfSaveAll" data-i18n="pdfSaveAll" title="현재 PDF 전체를 저장">전체 PDF 저장</button>
 </div>
 
+<!-- ══ PPT(프레젠테이션) 모드 툴바 ══ -->
+<div class="toolbar" id="tbPpt" style="display:none;">
+  <button id="ppNew" class="newbtn" data-i18n="ppNew">새 프레젠테이션</button>
+  <button id="ppOpen" class="primary" data-i18n="ppOpen">PPTX 열기</button>
+  <button id="ppSave" data-i18n="ppSave" title="파워포인트 파일(.pptx)로 저장">PPTX로 저장</button>
+  <button id="ppPng" data-i18n="ppPng" title="현재 슬라이드를 PNG 이미지로 저장">슬라이드 PNG 저장</button>
+  <div class="sep"></div>
+  <select id="ppLayout" title="새 슬라이드 레이아웃">
+    <option value="title" data-i18n="layTitle">제목 슬라이드</option>
+    <option value="body" data-i18n="layBody">제목＋내용</option>
+    <option value="blank" data-i18n="layBlank">빈 슬라이드</option>
+  </select>
+  <button id="ppAddSlide" data-i18n="ppAddSlide" title="현재 슬라이드 다음에 새 슬라이드 추가">＋슬라이드</button>
+  <button id="ppDupSlide" data-i18n="ppDupSlide" title="현재 슬라이드 복제">복제</button>
+  <button id="ppDelSlide" class="danger" data-i18n="ppDelSlide" title="현재 슬라이드 삭제">삭제</button>
+  <button id="ppUpSlide" class="icon" title="슬라이드 순서를 앞으로">▲</button>
+  <button id="ppDownSlide" class="icon" title="슬라이드 순서를 뒤로">▼</button>
+  <div class="sep"></div>
+  <button id="ppAddText" data-i18n="ppAddText" title="텍스트 상자 추가">텍스트</button>
+  <button id="ppAddImg" data-i18n="ppAddImg" title="이미지 추가">이미지</button>
+  <select id="ppShapeSel"><option value="rect" data-i18n="ppShapeRect">사각형</option><option value="ellipse" data-i18n="ppShapeEllipse">원</option></select>
+  <button id="ppAddShape" data-i18n="ppAddShape" title="도형 추가">도형</button>
+  <div class="sep"></div>
+  <label class="small" data-i18n="lblSize">크기</label>
+  <input type="number" id="ppFontSize" min="8" max="200" title="글자 크기" style="width:58px; border:1px solid var(--line); border-radius:7px; padding:5px 6px; font-size:13px; font-family:inherit;">
+  <button id="ppBold" class="icon" title="굵게"><b>B</b></button>
+  <input type="color" id="ppColor" value="#22262B" title="글자 색">
+  <button class="icon" data-ppalign="left" title="왼쪽 정렬">⟸</button>
+  <button class="icon" data-ppalign="center" title="가운데 정렬">⟺</button>
+  <button class="icon" data-ppalign="right" title="오른쪽 정렬">⟹</button>
+  <label class="small" data-i18n="lblFill">채움</label>
+  <input type="color" id="ppFill" value="#1F4E8C" title="도형 채움 색">
+  <label class="small" data-i18n="lblBg">배경</label>
+  <input type="color" id="ppBg" value="#FFFFFF" title="슬라이드 배경색">
+  <div class="sep"></div>
+  <label class="small" data-i18n="lblZoom">확대</label>
+  <select id="ppZoom">
+    <option value="fit" selected data-i18n="optFit">맞춤</option>
+    <option value="0.5">50%</option><option value="0.75">75%</option>
+    <option value="1">100%</option><option value="1.25">125%</option>
+  </select>
+  <button id="ppUndo" class="icon" title="실행 취소 (Ctrl+Z)">↶</button>
+  <button id="ppRedo" class="icon" title="다시 실행 (Ctrl+Y)">↷</button>
+  <div class="sep"></div>
+  <button id="ppStartShow" class="primary" data-i18n="ppShowBtn" title="현재 슬라이드부터 전체 화면으로 발표 (Esc로 종료)">▶ 슬라이드쇼</button>
+</div>
+
 <main>
   <!-- 글 모드 -->
   <div class="mode active" id="modeDoc">
@@ -442,7 +520,31 @@
       <canvas id="pdfCanvas" style="display:none;"></canvas>
     </div>
   </div>
+
+  <!-- PPT 모드 -->
+  <div class="mode" id="modePpt">
+    <div id="ppWrap">
+      <div id="ppList"></div>
+      <div id="ppMain">
+        <div id="ppStageArea">
+          <div id="ppStageBox"><div id="ppStage"></div></div>
+        </div>
+        <textarea id="ppNotes" spellcheck="false"></textarea>
+      </div>
+    </div>
+  </div>
 </main>
+
+<!-- 슬라이드쇼 오버레이 -->
+<div id="ppShow">
+  <div id="ppShowSlide"></div>
+  <div id="ppShowBar">
+    <button id="ppShowPrev" title="이전 슬라이드">◀</button>
+    <span id="ppShowNum">– / –</span>
+    <button id="ppShowNext" title="다음 슬라이드">▶</button>
+    <button id="ppShowExit" title="슬라이드쇼 종료 (Esc)">✕</button>
+  </div>
+</div>
 
 <footer>
   <span id="statMode" data-i18n="statModeDoc">글 모드</span>
@@ -460,6 +562,8 @@
 <input type="file" id="fileSheetOpen" accept=".xlsx,.xls,.csv" hidden>
 <input type="file" id="filePdfOpen" accept=".pdf" hidden>
 <input type="file" id="filePdfAdd" accept=".pdf" hidden>
+<input type="file" id="filePptOpen" accept=".pptx" hidden>
+<input type="file" id="filePptImg" accept="image/*" hidden>
 
 <!-- 확인 대화상자 -->
 <dialog id="dlgConfirm">
@@ -590,6 +694,29 @@ const I18N = {
     mPdfOpened:' 을(를) 열었습니다.', mPdfFail:'PDF 처리 실패: ', mPdfOpenFirst:'먼저 PDF를 여세요.',
     mPdfMerged:'PDF를 이어붙였습니다.', mPdfToImg:'현재 페이지를 그림 모드로 가져왔습니다.',
     fnPdf:'문서_', fnPdfPage:'페이지',
+    /* PPT 모드 */
+    tabPpt:'PPT', statModePpt:'PPT 모드',
+    statHintPpt:'요소를 드래그해 이동, 더블클릭해 글 수정, 모서리 사각형으로 크기 조절, Delete 키로 삭제',
+    ppNew:'새 프레젠테이션', ppOpen:'PPTX 열기', ppSave:'PPTX로 저장', ppPng:'슬라이드 PNG 저장',
+    ppAddSlide:'＋슬라이드', ppDupSlide:'복제', ppDelSlide:'삭제',
+    ppAddText:'텍스트', ppAddImg:'이미지', ppAddShape:'도형',
+    ppShapeRect:'사각형', ppShapeEllipse:'원',
+    ppShowBtn:'▶ 슬라이드쇼', lblFill:'채움', optFit:'맞춤',
+    layTitle:'제목 슬라이드', layBody:'제목＋내용', layBlank:'빈 슬라이드',
+    ppNotesPh:'발표자 노트 — 이 슬라이드에서 말할 내용을 메모하세요 (PPTX 저장 시 함께 저장됩니다)',
+    ppTitleDefault:'제목을 입력하세요', ppSubDefault:'부제목을 입력하세요',
+    ppBodyDefault:'내용을 입력하세요\n• 더블클릭으로 편집할 수 있습니다',
+    cfNewPpt:'현재 프레젠테이션이 모두 지워집니다. 저장하지 않은 내용은 복구할 수 없습니다. 새로 시작할까요?',
+    cfDelSlide:'{n}번 슬라이드를 삭제할까요?',
+    mNewPpt:'새 프레젠테이션을 시작합니다.',
+    mSlideDeleted:'슬라이드를 삭제했습니다.',
+    mPptNoMod:'프레젠테이션 모듈을 불러오지 못했습니다 (인터넷 연결 필요).',
+    mPptFail:'PPTX 처리 실패: ',
+    mPptImportNote:'(복잡한 서식·효과는 단순하게 표시될 수 있습니다)',
+    mPptSaved:'PPTX 파일을 저장했습니다.',
+    mPptNoSlides:'슬라이드에서 내용을 찾지 못했습니다.',
+    ppShowTip:'클릭 또는 → 키로 다음, Esc 키로 종료합니다.',
+    fnPpt:'프레젠테이션_', fnSlide:'슬라이드',
   },
   en: {
     tabDoc:'Text', tabImg:'Image', brandSub:'· writing and images, in one place',
@@ -667,6 +794,29 @@ const I18N = {
     mPdfOpened:' opened.', mPdfFail:'PDF processing failed: ', mPdfOpenFirst:'Open a PDF first.',
     mPdfMerged:'Appended the PDF.', mPdfToImg:'Sent the current page to Image mode.',
     fnPdf:'document_', fnPdfPage:'page',
+    /* PPT mode */
+    tabPpt:'Slides', statModePpt:'Slides mode',
+    statHintPpt:'Drag to move, double-click to edit text, use the corner square to resize, press Delete to remove',
+    ppNew:'New presentation', ppOpen:'Open PPTX', ppSave:'Save as PPTX', ppPng:'Save slide as PNG',
+    ppAddSlide:'+Slide', ppDupSlide:'Duplicate', ppDelSlide:'Delete',
+    ppAddText:'Text', ppAddImg:'Image', ppAddShape:'Shape',
+    ppShapeRect:'Rectangle', ppShapeEllipse:'Circle',
+    ppShowBtn:'▶ Slideshow', lblFill:'Fill', optFit:'Fit',
+    layTitle:'Title slide', layBody:'Title + body', layBlank:'Blank slide',
+    ppNotesPh:'Speaker notes — jot down what to say on this slide (saved into the PPTX file)',
+    ppTitleDefault:'Click to add a title', ppSubDefault:'Click to add a subtitle',
+    ppBodyDefault:'Click to add text\n• Double-click to edit',
+    cfNewPpt:'The current presentation will be cleared. Unsaved content cannot be recovered. Start over?',
+    cfDelSlide:'Delete slide {n}?',
+    mNewPpt:'Started a new presentation.',
+    mSlideDeleted:'Slide deleted.',
+    mPptNoMod:'Could not load the presentation module (internet required).',
+    mPptFail:'PPTX processing failed: ',
+    mPptImportNote:'(complex formatting and effects may appear simplified)',
+    mPptSaved:'Saved the PPTX file.',
+    mPptNoSlides:'No content found in the slides.',
+    ppShowTip:'Click or press → for next, Esc to exit.',
+    fnPpt:'presentation_', fnSlide:'slide',
   }
 };
 let LANG = 'ko';
@@ -680,9 +830,14 @@ function applyLang(){
     const k = el.getAttribute('data-i18n-title'); if(I18N[LANG][k]!==undefined) el.title = I18N[LANG][k];
   });
   /* 상태바 모드/힌트는 현재 모드에 맞게 */
-  const doc = document.getElementById('modeDoc').classList.contains('active');
-  document.getElementById('statMode').textContent = doc ? T('statModeDoc') : T('statModeImg');
-  document.getElementById('statHint').textContent = doc ? T('statHintDoc') : T('statHintImg');
+  const mmAll = {doc:'modeDoc', img:'modeImg', sheet:'modeSheet', pdf:'modePdf', ppt:'modePpt'};
+  let curMode = 'doc';
+  for(const k in mmAll){ const el = document.getElementById(mmAll[k]); if(el && el.classList.contains('active')) curMode = k; }
+  const lbAll = {doc:'statModeDoc', img:'statModeImg', sheet:'statModeSheet', pdf:'statModePdf', ppt:'statModePpt'};
+  const htAll = {doc:'statHintDoc', img:'statHintImg', sheet:'statHintSheet', pdf:'statHintPdf', ppt:'statHintPpt'};
+  document.getElementById('statMode').textContent = T(lbAll[curMode]);
+  document.getElementById('statHint').textContent = T(htAll[curMode]);
+  const pn = document.getElementById('ppNotes'); if(pn) pn.placeholder = T('ppNotesPh');
   /* 편집영역 placeholder */
   document.querySelectorAll('[data-ph-key]').forEach(el=>{
     const k = el.getAttribute('data-ph-key'); el.setAttribute('data-ph', T(k));
@@ -768,25 +923,27 @@ function askConfirm(text){
 
 /* 모드 전환 */
 function setMode(m){
-  const modes = { doc:'modeDoc', img:'modeImg', sheet:'modeSheet', pdf:'modePdf' };
-  const tabs = { doc:'tabDoc', img:'tabImg', sheet:'tabSheet', pdf:'tabPdf' };
-  const bars = { doc:'tbDoc', img:'tbImg', sheet:'tbSheet', pdf:'tbPdf' };
+  const modes = { doc:'modeDoc', img:'modeImg', sheet:'modeSheet', pdf:'modePdf', ppt:'modePpt' };
+  const tabs = { doc:'tabDoc', img:'tabImg', sheet:'tabSheet', pdf:'tabPdf', ppt:'tabPpt' };
+  const bars = { doc:'tbDoc', img:'tbImg', sheet:'tbSheet', pdf:'tbPdf', ppt:'tbPpt' };
   for(const k in modes){
     $(tabs[k]).classList.toggle('active', k===m);
     $(modes[k]).classList.toggle('active', k===m);
     $(bars[k]).style.display = (k===m) ? 'flex' : 'none';
   }
-  const label = { doc:'statModeDoc', img:'statModeImg', sheet:'statModeSheet', pdf:'statModePdf' };
-  const hint = { doc:'statHintDoc', img:'statHintImg', sheet:'statHintSheet', pdf:'statHintPdf' };
+  const label = { doc:'statModeDoc', img:'statModeImg', sheet:'statModeSheet', pdf:'statModePdf', ppt:'statModePpt' };
+  const hint = { doc:'statHintDoc', img:'statHintImg', sheet:'statHintSheet', pdf:'statHintPdf', ppt:'statHintPpt' };
   $('statMode').textContent = T(label[m]);
   $('statHint').textContent = T(hint[m]);
   if(m==='img') render();
   if(m==='sheet'){ ensureSheet(); }
+  if(m==='ppt'){ ensurePpt(); }
 }
 $('tabDoc').onclick = ()=>setMode('doc');
 $('tabImg').onclick = ()=>setMode('img');
 $('tabSheet').onclick = ()=>setMode('sheet');
 $('tabPdf').onclick = ()=>setMode('pdf');
+$('tabPpt').onclick = ()=>setMode('ppt');
 
 /* ═══════════════ 글 모드 ═══════════════ */
 const editor = $('editor');
@@ -2106,6 +2263,535 @@ $('pdfDelPage').onclick = async ()=>{
     pdfPage = keepPage; await renderPdfPage();
     msg(T('mPdfPageDeleted'));
   }catch(err){ msg(T('mPdfFail') + err.message); }
+};
+
+/* ═══════════════ PPT(프레젠테이션) 모드 ═══════════════ */
+const PP_W = 960, PP_H = 540;               /* 슬라이드 내부 좌표계 (16:9, 96dpi 기준 10in × 5.625in) */
+let ppSlides = [], ppCur = 0, ppSel = null; /* 슬라이드 배열 / 현재 슬라이드 / 선택 요소 id */
+let ppZoomV = 'fit', ppEditingEl = null, ppIdSeq = 1;
+let ppHist = [], ppHistPos = -1;            /* 실행 취소용 스냅샷 */
+const ppNewId = () => 'e' + (ppIdSeq++);
+
+function ppDefaultSlide(layout){
+  const s = { bg:'#FFFFFF', notes:'', els:[] };
+  if(layout === 'title'){
+    s.els.push({id:ppNewId(), type:'text', x:80,  y:185, w:800, h:90,  text:T('ppTitleDefault'), size:44, color:'#22262B', bold:true,  align:'center'});
+    s.els.push({id:ppNewId(), type:'text', x:160, y:300, w:640, h:50,  text:T('ppSubDefault'),   size:22, color:'#6B7482', bold:false, align:'center'});
+  }else if(layout === 'body'){
+    s.els.push({id:ppNewId(), type:'text', x:60, y:38,  w:840, h:70,  text:T('ppTitleDefault'), size:32, color:'#22262B', bold:true,  align:'left'});
+    s.els.push({id:ppNewId(), type:'text', x:60, y:130, w:840, h:360, text:T('ppBodyDefault'),  size:20, color:'#22262B', bold:false, align:'left'});
+  }
+  return s;
+}
+function ppInit(){
+  ppSlides = [ppDefaultSlide('title')];
+  ppCur = 0; ppSel = null; ppHist = []; ppHistPos = -1;
+  ppSnap(); ppRender();
+}
+function ensurePpt(){ if(!ppSlides.length) ppInit(); else ppRender(); }
+function ppFind(id){ const sl = ppSlides[ppCur]; return sl && sl.els.find(e => e.id === id); }
+
+/* ── 실행 취소 / 다시 실행 (스냅샷) ── */
+function ppSnap(){
+  ppHist = ppHist.slice(0, ppHistPos + 1);
+  ppHist.push(JSON.stringify({s: ppSlides, c: ppCur}));
+  if(ppHist.length > 60) ppHist.shift();
+  ppHistPos = ppHist.length - 1;
+}
+function ppRestore(str){
+  const o = JSON.parse(str);
+  ppSlides = o.s; ppCur = Math.min(o.c, ppSlides.length - 1); ppSel = null;
+  const mx = ppSlides.flatMap(s => s.els.map(e => +String(e.id).slice(1) || 0)).reduce((a,b)=>Math.max(a,b), 0);
+  ppIdSeq = Math.max(ppIdSeq, mx + 1);
+  ppRender();
+}
+function ppUndo(){ if(ppHistPos > 0){ ppHistPos--; ppRestore(ppHist[ppHistPos]); } }
+function ppRedo(){ if(ppHistPos < ppHist.length - 1){ ppHistPos++; ppRestore(ppHist[ppHistPos]); } }
+$('ppUndo').onclick = ppUndo;
+$('ppRedo').onclick = ppRedo;
+
+/* ── 렌더링 ── */
+function ppScale(){
+  if(ppZoomV !== 'fit') return +ppZoomV;
+  const a = $('ppStageArea');
+  const w = Math.max(120, a.clientWidth - 50), h = Math.max(90, a.clientHeight - 50);
+  return Math.max(.2, Math.min(w / PP_W, h / PP_H, 1.5));
+}
+function ppBuildEl(el, inter){
+  const d = document.createElement('div');
+  if(el.type === 'image'){
+    const im = document.createElement('img');
+    im.src = el.src; im.draggable = false;
+    im.style.cssText = 'width:100%;height:100%;object-fit:fill;pointer-events:none;display:block;';
+    d.appendChild(im);
+  }else if(el.type === 'shape'){
+    d.style.background = el.fill;
+    if(el.shape === 'ellipse') d.style.borderRadius = '50%';
+  }else{
+    d.textContent = el.text;
+    d.style.cssText = `font-size:${el.size}px; color:${el.color}; font-weight:${el.bold?700:400}; text-align:${el.align}; line-height:1.35; white-space:pre-wrap; word-break:break-word; overflow:hidden;`;
+  }
+  d.classList.add('ppEl');
+  if(inter && ppSel === el.id) d.classList.add('sel');
+  d.dataset.id = el.id;
+  d.style.position = 'absolute';
+  d.style.left = el.x+'px'; d.style.top = el.y+'px';
+  d.style.width = el.w+'px'; d.style.height = el.h+'px';
+  if(inter && ppSel === el.id){
+    const h = document.createElement('div'); h.className = 'pph'; d.appendChild(h);
+  }
+  return d;
+}
+function ppRenderStage(){
+  const sc = ppScale();
+  $('ppStageBox').style.width = (PP_W*sc)+'px';
+  $('ppStageBox').style.height = (PP_H*sc)+'px';
+  const st = $('ppStage');
+  st.style.transform = `scale(${sc})`;
+  st.innerHTML = '';
+  const sl = ppSlides[ppCur]; if(!sl) return;
+  st.style.background = sl.bg;
+  sl.els.forEach(el => st.appendChild(ppBuildEl(el, true)));
+}
+function ppRenderList(){
+  const list = $('ppList'); list.innerHTML = '';
+  ppSlides.forEach((sl, i) => {
+    const it = document.createElement('div');
+    it.className = 'ppThumb' + (i === ppCur ? ' sel' : '');
+    const num = document.createElement('div'); num.className = 'ppThumbNum'; num.textContent = i + 1;
+    const box = document.createElement('div'); box.className = 'ppMiniBox';
+    const mini = document.createElement('div'); mini.className = 'ppMini';
+    mini.style.background = sl.bg;
+    mini.style.transform = 'scale(' + (144 / PP_W) + ')';
+    sl.els.forEach(el => mini.appendChild(ppBuildEl(el, false)));
+    box.appendChild(mini);
+    it.appendChild(num); it.appendChild(box);
+    it.onclick = () => { ppCur = i; ppSel = null; ppRender(); };
+    list.appendChild(it);
+  });
+}
+function ppRenderNotes(){ const sl = ppSlides[ppCur]; $('ppNotes').value = sl ? sl.notes : ''; }
+function ppSyncToolbar(){
+  const el = ppSel ? ppFind(ppSel) : null;
+  $('ppFontSize').value = (el && el.type === 'text') ? el.size : '';
+  if(el && el.type === 'text') $('ppColor').value = el.color;
+  if(el && el.type === 'shape') $('ppFill').value = el.fill;
+  const sl = ppSlides[ppCur]; if(sl) $('ppBg').value = sl.bg;
+}
+function ppRender(){ ppRenderStage(); ppRenderList(); ppRenderNotes(); ppSyncToolbar(); }
+function ppUpdateElDom(el){
+  const d = $('ppStage').querySelector(`[data-id="${el.id}"]`); if(!d) return;
+  d.style.left = el.x+'px'; d.style.top = el.y+'px';
+  d.style.width = el.w+'px'; d.style.height = el.h+'px';
+}
+function ppSelect(id){ if(ppSel === id) return; ppSel = id; ppRenderStage(); ppSyncToolbar(); }
+/* 편집 중인 텍스트가 있으면 내용 저장 */
+function ppCommitEditing(){
+  if(!ppEditingEl) return;
+  const d = $('ppStage').querySelector(`[data-id="${ppEditingEl}"]`);
+  if(d && d.onblur) d.onblur();
+}
+
+/* ── 무대(편집 영역) 상호작용: 이동·크기 조절·텍스트 편집 ── */
+let ppDrag = null;
+$('ppStage').addEventListener('mousedown', e => {
+  const handle = e.target.closest('.pph');
+  const elD = e.target.closest('.ppEl');
+  if(!elD){ ppCommitEditing(); ppSelect(null); return; }
+  const id = elD.dataset.id;
+  if(ppEditingEl === id) return;                 /* 글 입력 중이면 그대로 둠 */
+  if(ppEditingEl && ppEditingEl !== id) ppCommitEditing();
+  ppSelect(id);
+  const el = ppFind(id); if(!el) return;
+  ppDrag = { el, mode: handle ? 'resize' : 'move', sx:e.clientX, sy:e.clientY,
+             ox:el.x, oy:el.y, ow:el.w, oh:el.h, sc: ppScale(), moved:false };
+  e.preventDefault();
+});
+window.addEventListener('mousemove', e => {
+  if(!ppDrag) return;
+  const dx = (e.clientX - ppDrag.sx) / ppDrag.sc, dy = (e.clientY - ppDrag.sy) / ppDrag.sc;
+  if(Math.abs(dx) + Math.abs(dy) > 1) ppDrag.moved = true;
+  const el = ppDrag.el;
+  if(ppDrag.mode === 'move'){ el.x = Math.round(ppDrag.ox + dx); el.y = Math.round(ppDrag.oy + dy); }
+  else { el.w = Math.max(20, Math.round(ppDrag.ow + dx)); el.h = Math.max(16, Math.round(ppDrag.oh + dy)); }
+  ppUpdateElDom(el);
+});
+window.addEventListener('mouseup', () => {
+  if(ppDrag){ if(ppDrag.moved){ ppSnap(); ppRenderList(); } ppDrag = null; }
+});
+$('ppStage').addEventListener('dblclick', e => {
+  const d = e.target.closest('.ppEl'); if(!d) return;
+  const el = ppFind(d.dataset.id);
+  if(!el || el.type !== 'text') return;
+  ppEditingEl = el.id;
+  const hh = d.querySelector('.pph'); if(hh) hh.remove();
+  d.contentEditable = 'true'; d.focus();
+  document.execCommand('selectAll', false, null);
+  d.onblur = () => {
+    d.contentEditable = 'false'; d.onblur = null;
+    el.text = d.innerText.replace(/\n$/, '');
+    ppEditingEl = null;
+    ppSnap(); ppRender();
+  };
+});
+$('ppNotes').onchange = e => { const sl = ppSlides[ppCur]; if(sl){ sl.notes = e.target.value; ppSnap(); } };
+
+/* ── 키보드: Delete 삭제 · 방향키 이동 · Ctrl+Z/Y ── */
+document.addEventListener('keydown', e => {
+  if(!$('modePpt').classList.contains('active')) return;
+  if($('ppShow').style.display === 'flex') return;
+  const ae = document.activeElement;
+  if(ppEditingEl || (ae && (/INPUT|TEXTAREA|SELECT/.test(ae.tagName) || ae.isContentEditable))) return;
+  if((e.key === 'Delete' || e.key === 'Backspace') && ppSel){
+    const sl = ppSlides[ppCur];
+    sl.els = sl.els.filter(x => x.id !== ppSel);
+    ppSel = null; ppSnap(); ppRender(); e.preventDefault();
+  }else if(e.key.startsWith('Arrow') && ppSel){
+    const el = ppFind(ppSel); if(!el) return;
+    const st = e.shiftKey ? 10 : 2;
+    if(e.key === 'ArrowLeft') el.x -= st;
+    if(e.key === 'ArrowRight') el.x += st;
+    if(e.key === 'ArrowUp') el.y -= st;
+    if(e.key === 'ArrowDown') el.y += st;
+    ppUpdateElDom(el); ppSnap(); e.preventDefault();
+  }else if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z'){
+    e.shiftKey ? ppRedo() : ppUndo(); e.preventDefault();
+  }else if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y'){
+    ppRedo(); e.preventDefault();
+  }
+});
+
+/* ── 슬라이드 관리 ── */
+$('ppNew').onclick = async () => {
+  if(ppSlides.length && !await askConfirm(T('cfNewPpt'))) return;
+  ppInit(); msg(T('mNewPpt'));
+};
+$('ppAddSlide').onclick = () => {
+  ppCommitEditing();
+  ppSlides.splice(ppCur + 1, 0, ppDefaultSlide($('ppLayout').value));
+  ppCur++; ppSel = null; ppSnap(); ppRender();
+};
+$('ppDupSlide').onclick = () => {
+  ppCommitEditing();
+  const sl = ppSlides[ppCur]; if(!sl) return;
+  const copy = JSON.parse(JSON.stringify(sl));
+  copy.els.forEach(el => el.id = ppNewId());
+  ppSlides.splice(ppCur + 1, 0, copy);
+  ppCur++; ppSel = null; ppSnap(); ppRender();
+};
+$('ppDelSlide').onclick = async () => {
+  if(!ppSlides.length) return;
+  if(!await askConfirm(T('cfDelSlide').replace('{n}', ppCur + 1))) return;
+  ppSlides.splice(ppCur, 1);
+  if(!ppSlides.length) ppSlides.push(ppDefaultSlide('blank'));
+  ppCur = Math.min(ppCur, ppSlides.length - 1);
+  ppSel = null; ppSnap(); ppRender(); msg(T('mSlideDeleted'));
+};
+$('ppUpSlide').onclick = () => {
+  if(ppCur <= 0) return;
+  [ppSlides[ppCur-1], ppSlides[ppCur]] = [ppSlides[ppCur], ppSlides[ppCur-1]];
+  ppCur--; ppSnap(); ppRender();
+};
+$('ppDownSlide').onclick = () => {
+  if(ppCur >= ppSlides.length - 1) return;
+  [ppSlides[ppCur+1], ppSlides[ppCur]] = [ppSlides[ppCur], ppSlides[ppCur+1]];
+  ppCur++; ppSnap(); ppRender();
+};
+
+/* ── 요소 추가 ── */
+$('ppAddText').onclick = () => {
+  const el = {id:ppNewId(), type:'text', x:280, y:220, w:400, h:60, text:T('txtDefault'), size:24, color:'#22262B', bold:false, align:'left'};
+  ppSlides[ppCur].els.push(el); ppSel = el.id; ppSnap(); ppRender();
+};
+$('ppAddImg').onclick = () => $('filePptImg').click();
+$('filePptImg').onchange = e => {
+  const f = e.target.files[0]; if(!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    const im = new Image();
+    im.onload = () => {
+      const w = Math.min(420, im.width || 420);
+      const h = Math.max(20, Math.round(w * (im.height || 300) / (im.width || 400)));
+      const el = {id:ppNewId(), type:'image', x:Math.round((PP_W-w)/2), y:Math.max(10, Math.round((PP_H-h)/2)), w, h, src:rd.result};
+      ppSlides[ppCur].els.push(el); ppSel = el.id; ppSnap(); ppRender();
+    };
+    im.src = rd.result;
+  };
+  rd.readAsDataURL(f); e.target.value = '';
+};
+$('ppAddShape').onclick = () => {
+  const el = {id:ppNewId(), type:'shape', shape:$('ppShapeSel').value, x:360, y:190, w:240, h:160, fill:$('ppFill').value};
+  ppSlides[ppCur].els.push(el); ppSel = el.id; ppSnap(); ppRender();
+};
+
+/* ── 선택 요소 서식 ── */
+$('ppFontSize').onchange = e => {
+  const el = ppSel && ppFind(ppSel);
+  if(el && el.type === 'text'){ el.size = Math.max(8, Math.min(200, +e.target.value || el.size)); ppSnap(); ppRender(); }
+};
+$('ppBold').onclick = () => {
+  const el = ppSel && ppFind(ppSel);
+  if(el && el.type === 'text'){ el.bold = !el.bold; ppSnap(); ppRender(); }
+};
+$('ppColor').onchange = e => {
+  const el = ppSel && ppFind(ppSel);
+  if(el && el.type === 'text'){ el.color = e.target.value; ppSnap(); ppRender(); }
+};
+document.querySelectorAll('#tbPpt [data-ppalign]').forEach(b => b.onclick = () => {
+  const el = ppSel && ppFind(ppSel);
+  if(el && el.type === 'text'){ el.align = b.dataset.ppalign; ppSnap(); ppRender(); }
+});
+$('ppFill').onchange = e => {
+  const el = ppSel && ppFind(ppSel);
+  if(el && el.type === 'shape'){ el.fill = e.target.value; ppSnap(); ppRender(); }
+};
+$('ppBg').onchange = e => {
+  const sl = ppSlides[ppCur];
+  if(sl){ sl.bg = e.target.value; ppSnap(); ppRender(); }
+};
+$('ppZoom').onchange = e => { ppZoomV = e.target.value; ppRenderStage(); };
+window.addEventListener('resize', () => {
+  if($('modePpt').classList.contains('active') && ppZoomV === 'fit') ppRenderStage();
+  if($('ppShow').style.display === 'flex') ppShowRender();
+});
+
+/* ── 슬라이드쇼 ── */
+let ppShowIdx = 0;
+function ppShowRender(){
+  const sl = ppSlides[ppShowIdx]; if(!sl) return;
+  const box = $('ppShowSlide'); box.innerHTML = '';
+  const sc = Math.min(window.innerWidth / PP_W, window.innerHeight / PP_H);
+  box.style.width = (PP_W*sc)+'px'; box.style.height = (PP_H*sc)+'px';
+  const st = document.createElement('div');
+  st.style.cssText = `width:${PP_W}px; height:${PP_H}px; transform:scale(${sc}); transform-origin:top left; position:relative; background:${sl.bg}; overflow:hidden;`;
+  sl.els.forEach(el => st.appendChild(ppBuildEl(el, false)));
+  box.appendChild(st);
+  $('ppShowNum').textContent = (ppShowIdx + 1) + ' / ' + ppSlides.length;
+}
+function ppStartShow(){
+  if(!ppSlides.length) return;
+  ppCommitEditing();
+  ppShowIdx = ppCur;
+  $('ppShow').style.display = 'flex';
+  ppShowRender();
+  msg(T('ppShowTip'));
+  if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{});
+}
+function ppEndShow(){
+  $('ppShow').style.display = 'none';
+  if(document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+}
+function ppShowNext(){ if(ppShowIdx < ppSlides.length - 1){ ppShowIdx++; ppShowRender(); } else ppEndShow(); }
+function ppShowPrevF(){ if(ppShowIdx > 0){ ppShowIdx--; ppShowRender(); } }
+$('ppStartShow').onclick = ppStartShow;
+$('ppShowExit').onclick = ppEndShow;
+$('ppShowNext').onclick = ppShowNext;
+$('ppShowPrev').onclick = ppShowPrevF;
+$('ppShowSlide').onclick = ppShowNext;
+document.addEventListener('keydown', e => {
+  if($('ppShow').style.display !== 'flex') return;
+  if(e.key === 'Escape'){ ppEndShow(); }
+  else if(['ArrowRight',' ','PageDown','Enter'].includes(e.key)){ ppShowNext(); e.preventDefault(); }
+  else if(['ArrowLeft','PageUp'].includes(e.key)){ ppShowPrevF(); e.preventDefault(); }
+}, true);
+document.addEventListener('fullscreenchange', () => {
+  if(!document.fullscreenElement && $('ppShow').style.display === 'flex') $('ppShow').style.display = 'none';
+});
+
+/* ── 현재 슬라이드 → PNG (직접 캔버스에 그림) ── */
+function ppLoadImg(src){ return new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; }); }
+function ppWrap(c, text, w){
+  if(text === '') return [''];
+  const out = []; let cur = '';
+  for(const word of text.split(' ')){
+    const t = cur ? cur + ' ' + word : word;
+    if(c.measureText(t).width <= w){ cur = t; continue; }
+    if(cur){ out.push(cur); cur = ''; }
+    if(c.measureText(word).width <= w){ cur = word; continue; }
+    let seg = '';
+    for(const ch of word){
+      if(!seg || c.measureText(seg + ch).width <= w) seg += ch;
+      else { out.push(seg); seg = ch; }
+    }
+    cur = seg;
+  }
+  out.push(cur);
+  return out;
+}
+async function ppSlideToCanvas(sl, scale){
+  const cvv = document.createElement('canvas');
+  cvv.width = PP_W * scale; cvv.height = PP_H * scale;
+  const c = cvv.getContext('2d'); c.scale(scale, scale);
+  c.fillStyle = sl.bg; c.fillRect(0, 0, PP_W, PP_H);
+  for(const el of sl.els){
+    if(el.type === 'shape'){
+      c.fillStyle = el.fill;
+      if(el.shape === 'ellipse'){ c.beginPath(); c.ellipse(el.x + el.w/2, el.y + el.h/2, el.w/2, el.h/2, 0, 0, Math.PI*2); c.fill(); }
+      else c.fillRect(el.x, el.y, el.w, el.h);
+    }else if(el.type === 'image'){
+      try{ const im = await ppLoadImg(el.src); c.drawImage(im, el.x, el.y, el.w, el.h); }catch(e){}
+    }else{
+      c.fillStyle = el.color;
+      c.font = `${el.bold ? '700' : '400'} ${el.size}px 'Segoe UI','Malgun Gothic','Apple SD Gothic Neo',sans-serif`;
+      c.textBaseline = 'top';
+      const lh = el.size * 1.35;
+      let y = el.y + (lh - el.size) / 2;
+      for(const para of String(el.text).split('\n')){
+        for(const ln of ppWrap(c, para, el.w)){
+          let x = el.x;
+          const wpx = c.measureText(ln).width;
+          if(el.align === 'center') x = el.x + (el.w - wpx) / 2;
+          else if(el.align === 'right') x = el.x + el.w - wpx;
+          c.fillText(ln, x, y);
+          y += lh;
+        }
+      }
+    }
+  }
+  return cvv;
+}
+$('ppPng').onclick = async () => {
+  const sl = ppSlides[ppCur]; if(!sl) return;
+  ppCommitEditing();
+  try{
+    const cvv = await ppSlideToCanvas(sl, 2);
+    cvv.toBlob(b => download(b, T('fnSlide') + (ppCur + 1) + '_' + new Date().toISOString().slice(0,10) + '.png'), 'image/png');
+  }catch(err){ msg(T('mExportFail') + err.message); }
+};
+
+/* ── PPTX로 저장 (PptxGenJS) ── */
+$('ppSave').onclick = async () => {
+  if(typeof PptxGenJS === 'undefined'){ msg(T('mPptNoMod')); return; }
+  if(!ppSlides.length){ msg(T('mPptNoSlides')); return; }
+  ppCommitEditing();
+  try{
+    const pres = new PptxGenJS();
+    pres.layout = 'LAYOUT_16x9';                 /* 10in × 5.625in = 960 × 540 px */
+    const K = 1 / 96;                            /* px → inch */
+    ppSlides.forEach(sl => {
+      const s = pres.addSlide();
+      s.background = { color: sl.bg.replace('#','') };
+      sl.els.forEach(el => {
+        const box = { x: el.x*K, y: el.y*K, w: el.w*K, h: el.h*K };
+        if(el.type === 'shape'){
+          s.addShape(el.shape === 'ellipse' ? 'ellipse' : 'rect',
+            Object.assign({}, box, { fill:{color: el.fill.replace('#','')}, line:{type:'none'} }));
+        }else if(el.type === 'image'){
+          s.addImage(Object.assign({ data: el.src }, box));
+        }else{
+          s.addText(el.text, Object.assign({}, box, {
+            fontSize: Math.max(6, Math.round(el.size * 0.75)),
+            color: el.color.replace('#',''), bold: !!el.bold,
+            align: el.align, valign: 'top',
+            fontFace: LANG === 'ko' ? 'Malgun Gothic' : 'Segoe UI'
+          }));
+        }
+      });
+      if(sl.notes) s.addNotes(sl.notes);
+    });
+    const blob = await pres.write('blob');
+    await download(blob, T('fnPpt') + new Date().toISOString().slice(0,10) + '.pptx');
+    msg(T('mPptSaved'));
+  }catch(err){ msg(T('mPptFail') + err.message); }
+};
+
+/* ── PPTX 열기 (JSZip으로 직접 해석 — 텍스트·이미지·도형·배경) ── */
+function ppLoc(node, name){ return [...node.getElementsByTagName('*')].filter(n => n.localName === name); }
+async function importPptx(buf){
+  const zip = await JSZip.loadAsync(buf);
+  const presFile = zip.file('ppt/presentation.xml');
+  if(!presFile) throw new Error('presentation.xml');
+  const presX = await presFile.async('string');
+  const mSz = presX.match(/sldSz[^>]*cx="(\d+)"[^>]*cy="(\d+)"/);
+  const cx = mSz ? +mSz[1] : 12192000, cy = mSz ? +mSz[2] : 6858000;
+  const kx = PP_W / cx, ky = PP_H / cy;
+  const names = Object.keys(zip.files)
+    .filter(n => /^ppt\/slides\/slide\d+\.xml$/.test(n))
+    .sort((a,b) => +a.match(/(\d+)\.xml/)[1] - +b.match(/(\d+)\.xml/)[1]);
+  if(!names.length) throw new Error(T('mPptNoSlides'));
+  const parser = new DOMParser();
+  const RNS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  const out = [];
+  for(const nm of names){
+    const num = nm.match(/(\d+)\.xml/)[1];
+    const xml = parser.parseFromString(await zip.file(nm).async('string'), 'application/xml');
+    /* 이미지 관계(rels) */
+    const rels = {};
+    const rf = zip.file(`ppt/slides/_rels/slide${num}.xml.rels`);
+    if(rf){
+      const rx = parser.parseFromString(await rf.async('string'), 'application/xml');
+      [...rx.getElementsByTagName('Relationship')].forEach(r => rels[r.getAttribute('Id')] = r.getAttribute('Target'));
+    }
+    const sl = { bg:'#FFFFFF', notes:'', els:[] };
+    const bg = ppLoc(xml.documentElement, 'bg')[0];
+    if(bg){ const cNode = ppLoc(bg, 'srgbClr')[0]; if(cNode) sl.bg = '#' + cNode.getAttribute('val'); }
+    const tree = ppLoc(xml.documentElement, 'spTree')[0];
+    if(tree) for(const node of [...tree.children]){
+      const ln = node.localName;
+      if(ln !== 'sp' && ln !== 'pic') continue;
+      const xf = ppLoc(node, 'xfrm')[0]; if(!xf) continue;
+      const off = ppLoc(xf, 'off')[0], ext = ppLoc(xf, 'ext')[0];
+      if(!off || !ext) continue;
+      const x = Math.round(+off.getAttribute('x') * kx), y = Math.round(+off.getAttribute('y') * ky);
+      const w = Math.max(10, Math.round(+ext.getAttribute('cx') * kx));
+      const h = Math.max(10, Math.round(+ext.getAttribute('cy') * ky));
+      if(ln === 'pic'){
+        const blip = ppLoc(node, 'blip')[0]; if(!blip) continue;
+        const rid = blip.getAttribute('r:embed') || blip.getAttributeNS(RNS, 'embed');
+        const tgt = rels[rid]; if(!tgt) continue;
+        const path = 'ppt/' + tgt.replace(/^(\.\.\/)+/, '');
+        const ext2 = path.split('.').pop().toLowerCase();
+        const mime = {png:'image/png', jpg:'image/jpeg', jpeg:'image/jpeg', gif:'image/gif', bmp:'image/bmp', webp:'image/webp', svg:'image/svg+xml'}[ext2];
+        const mf = zip.file(path);
+        if(!mime || !mf) continue;               /* emf·wmf 등은 건너뜀 */
+        const b64 = await mf.async('base64');
+        sl.els.push({id:ppNewId(), type:'image', x, y, w, h, src:`data:${mime};base64,${b64}`});
+      }else{
+        const txBody = ppLoc(node, 'txBody')[0];
+        const paras = txBody ? ppLoc(txBody, 'p') : [];
+        const text = paras.map(p => ppLoc(p, 't').map(t => t.textContent).join('')).join('\n');
+        if(text.trim()){
+          const rpr = ppLoc(node, 'rPr').find(r => r.getAttribute('sz')) || ppLoc(node, 'rPr')[0] || null;
+          let szPt = 18, color = '#22262B', bold = false;
+          if(rpr){
+            if(rpr.getAttribute('sz')) szPt = +rpr.getAttribute('sz') / 100;
+            bold = rpr.getAttribute('b') === '1';
+            const cNode = ppLoc(rpr, 'srgbClr')[0]; if(cNode) color = '#' + cNode.getAttribute('val');
+          }
+          const ppr = ppLoc(node, 'pPr').find(p => p.getAttribute('algn'));
+          const align = {ctr:'center', r:'right', l:'left', just:'left'}[ppr ? ppr.getAttribute('algn') : 'l'] || 'left';
+          sl.els.push({id:ppNewId(), type:'text', x, y, w, h, text, size:Math.max(8, Math.round(szPt / 0.75)), color, bold, align});
+        }else{
+          const spPr = ppLoc(node, 'spPr')[0];
+          const fillC = spPr ? ppLoc(spPr, 'srgbClr')[0] : null;
+          if(fillC){
+            const prst = ppLoc(node, 'prstGeom')[0];
+            const shape = (prst && prst.getAttribute('prst') === 'ellipse') ? 'ellipse' : 'rect';
+            sl.els.push({id:ppNewId(), type:'shape', shape, x, y, w, h, fill:'#' + fillC.getAttribute('val')});
+          }
+        }
+      }
+    }
+    out.push(sl);
+  }
+  ppSlides = out; ppCur = 0; ppSel = null;
+  ppHist = []; ppHistPos = -1; ppSnap(); ppRender();
+}
+$('ppOpen').onclick = () => {
+  if(typeof JSZip === 'undefined'){ msg(T('mPptNoMod')); return; }
+  $('filePptOpen').click();
+};
+$('filePptOpen').onchange = e => {
+  const f = e.target.files[0]; if(!f) return;
+  const rd = new FileReader();
+  rd.onload = async () => {
+    try{
+      await importPptx(rd.result);
+      setMode('ppt');
+      msg(f.name + T('mPdfOpened') + ' ' + T('mPptImportNote'));
+    }catch(err){ msg(T('mPptFail') + (err.message || err)); }
+  };
+  rd.readAsArrayBuffer(f); e.target.value = '';
 };
 
 /* URL의 ?lang=en / ?lang=ko를 최우선 적용하고, 없으면 브라우저 기본 언어를 따름 */
