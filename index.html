@@ -2277,6 +2277,12 @@ const SH_DEFAULT_W = 92;
 
 const colName = i => { let s=''; i++; while(i>0){ i--; s=String.fromCharCode(65+i%26)+s; i=Math.floor(i/26); } return s; };
 const colIdx = s => { let n=0; for(const ch of s) n = n*26 + (ch.charCodeAt(0)-64); return n-1; };
+/* 'A1' / '$B$3' 같은 참조 문자열을 좌표로 */
+function parseRef(s){
+  const m = String(s).match(/^\$?([A-Z]{1,3})\$?(\d+)$/);
+  return m ? { r:(+m[2])-1, c:colIdx(m[1]) } : null;
+}
+let shPoint = null;   /* 수식 입력 중 방향키로 셀을 가리키는 상태 */
 const sheetActive = ()=> $('modeSheet').classList.contains('active');
 const cellKey = (r,c)=> r+','+c;
 
@@ -2769,21 +2775,30 @@ function fillRightSel(){
 }
 
 /* ── 편집 ── */
+/* 편집 방식
+   'type' : 셀에서 바로 타이핑을 시작한 상태 → 방향키를 누르면 입력을 확정하고 그 방향으로 이동 (엑셀과 동일)
+   'edit' : F2 또는 더블클릭으로 들어온 상태 → 방향키는 글자 사이에서 커서를 움직임          */
+let shEditMode = 'type';
+function caretToEnd(td){
+  const range=document.createRange(); range.selectNodeContents(td); range.collapse(false);
+  const sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+}
 function startEdit(r,c,initChar){
   commitPendingEdit();     /* 다른 칸을 편집 중이었다면 먼저 확정 */
   setSel(r,c,false);
   const td = cellEl(r,c);
   if(!td) return;
+  shEditMode = (initChar!=null) ? 'type' : 'edit';
+  shPoint = null;
   td.classList.add('editing');
   const raw = shData[r][c]; const orig = (raw==null)?'':String(raw);
   td.textContent = (initChar!=null) ? initChar : orig;
   td.style.textAlign='left';
   td.contentEditable = 'true'; td.focus();
-  const range=document.createRange(); range.selectNodeContents(td); range.collapse(false);
-  const sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+  caretToEnd(td);
   const finish = (commit, mr, mc, noMove)=>{
     if(shEditFinish !== finish) return;      /* 이미 마무리됨 */
-    shEditFinish = null;
+    shEditFinish = null; shPoint = null;
     td.contentEditable='false'; td.classList.remove('editing');
     td.onblur=td.onkeydown=null;
     if(commit){
@@ -2797,10 +2812,45 @@ function startEdit(r,c,initChar){
     $('sheetScroll').focus();
   };
   shEditFinish = finish;
+
+  /* 수식 입력 중 방향키 — 가리키는 셀의 참조를 넣어 줍니다 (엑셀의 '가리키기' 방식) */
+  function pointArrow(dr, dc){
+    const s = td.textContent;
+    if(!shPoint){
+      const m = s.match(/(\$?[A-Z]{1,3}\$?\d+)$/);
+      if(m){
+        const p = parseRef(m[1]);
+        if(!p) return false;
+        shPoint = { r:p.r, c:p.c, base:s.slice(0, s.length-m[1].length) };
+      } else if(/[=+\-*/^&%(,:<>]$/.test(s)){
+        shPoint = { r:r, c:c, base:s };
+      } else return false;      /* 참조를 넣을 자리가 아니면 일반 이동 */
+    }
+    shPoint.r = Math.max(0, Math.min(shRows-1, shPoint.r + dr));
+    shPoint.c = Math.max(0, Math.min(shCols-1, shPoint.c + dc));
+    td.textContent = shPoint.base + refOf(shPoint.r, shPoint.c);
+    caretToEnd(td);
+    return true;
+  }
+
   td.onkeydown = ev=>{
-    if(ev.key==='Enter'){ ev.preventDefault(); finish(true, ev.shiftKey?-1:1, 0); }
-    else if(ev.key==='Escape'){ ev.preventDefault(); finish(false,0,0); }
-    else if(ev.key==='Tab'){ ev.preventDefault(); finish(true, 0, ev.shiftKey?-1:1); }
+    const stop = ()=>{ ev.preventDefault(); ev.stopPropagation(); };
+    if(ev.key==='Enter'){ stop(); finish(true, ev.shiftKey?-1:1, 0); return; }
+    if(ev.key==='Escape'){ stop(); finish(false,0,0); return; }
+    if(ev.key==='Tab'){ stop(); finish(true, 0, ev.shiftKey?-1:1); return; }
+    if(ev.key==='F2'){ stop(); shEditMode = (shEditMode==='type') ? 'edit' : 'type'; shPoint=null; return; }
+    const dir = {ArrowUp:[-1,0], ArrowDown:[1,0], ArrowLeft:[0,-1], ArrowRight:[0,1]}[ev.key];
+    if(dir){
+      if(shEditMode !== 'type') return;              /* F2·더블클릭 편집 중이면 커서 이동 */
+      if(td.textContent[0]==='='){                   /* 수식이면 참조 가리키기 */
+        if(pointArrow(dir[0], dir[1])){ stop(); return; }
+      }
+      stop();                                        /* 그 밖에는 입력 확정 후 이동 */
+      finish(true, dir[0], dir[1]);
+      return;
+    }
+    /* 글자를 더 입력하면 가리키기 상태 해제 */
+    if(ev.key.length===1 || ev.key==='Backspace' || ev.key==='Delete') shPoint = null;
   };
   td.onblur = ()=>{ if(shRefDrag) return; finish(true,0,0); };
 }
@@ -2871,7 +2921,7 @@ function jumpEdge(dr,dc){
 /* ── 키보드 ── */
 $('sheetScroll').tabIndex = 0;
 $('sheetScroll').addEventListener('keydown', e=>{
-  if(sheetTb.querySelector('td.editing')) return;
+  if(shEditFinish || sheetTb.querySelector('td.editing')) return;
   const ctrl = e.ctrlKey || e.metaKey;
   const mv = (dr,dc)=>{
     e.preventDefault();
@@ -3813,8 +3863,16 @@ const HELP_CONTENT = {
 </ul>
 <h4>자동 채우기</h4>
 <p>선택 범위 오른쪽 하단 모서리의 <b>■ 핸들</b>을 드래그 — 숫자는 등차수열, 수식은 참조 이동.</p>
+<h4>입력하며 이동하기</h4>
+<p>셀에 바로 타이핑한 뒤에는 <b>방향키만 눌러도 입력이 저장되고 그 방향으로 이동</b>합니다. Enter는 아래, Tab은 오른쪽으로 한 칸씩 갑니다.</p>
+<ul>
+  <li>표를 가로로 채울 때: 값 입력 → <b>→</b> → 값 입력 → <b>→</b> … 이렇게 이어가면 됩니다.</li>
+  <li><b>F2</b>나 더블클릭으로 들어간 편집에서는 방향키가 글자 사이 커서를 움직입니다. 편집 중 <b>F2</b>를 누르면 두 방식이 전환됩니다.</li>
+  <li>수식(<code>=</code>)을 입력하는 중에는 방향키로 참조할 셀을 <b>가리킬</b> 수 있습니다. 예: <code>=</code> 입력 후 ↑ 를 두 번 누르면 두 칸 위 셀이 참조로 들어갑니다.</li>
+</ul>
 <h4>단축키</h4>
 <table><tr><th>단축키</th><th>동작</th></tr>
+<tr><td>방향키 (타이핑 직후)</td><td>입력 확정 후 그 방향으로 이동</td></tr>
 <tr><td>Ctrl+C / X / V</td><td>복사 / 잘라내기 / 붙여넣기 (엑셀과 호환)</td></tr>
 <tr><td>Ctrl+Z / Y</td><td>실행 취소 / 다시 실행</td></tr>
 <tr><td>Ctrl+F / H</td><td>찾기 / 찾기·바꾸기</td></tr>
@@ -4011,8 +4069,16 @@ const HELP_CONTENT = {
 </ul>
 <h4>Auto-fill</h4>
 <p>Drag the <b>■ handle</b> at the bottom-right of a selection — numbers extend as a series, formulas shift their references.</p>
+<h4>Type and move</h4>
+<p>After typing directly into a cell, <b>an arrow key commits the entry and moves in that direction</b>. Enter moves down one cell, Tab moves right one cell.</p>
+<ul>
+  <li>Filling a row: type a value → <b>→</b> → type → <b>→</b> … and so on.</li>
+  <li>When you enter a cell with <b>F2</b> or a double-click, arrow keys move the text cursor instead. Press <b>F2</b> while editing to switch between the two behaviours.</li>
+  <li>While typing a formula (<code>=</code>), arrow keys <b>point</b> at a cell to insert its reference — type <code>=</code> then press ↑ twice to reference the cell two rows up.</li>
+</ul>
 <h4>Shortcuts</h4>
 <table><tr><th>Shortcut</th><th>Action</th></tr>
+<tr><td>Arrow keys (right after typing)</td><td>Commit and move in that direction</td></tr>
 <tr><td>Ctrl+C / X / V</td><td>Copy / Cut / Paste (Excel-compatible)</td></tr>
 <tr><td>Ctrl+Z / Y</td><td>Undo / Redo</td></tr>
 <tr><td>Ctrl+F / H</td><td>Find / Find & Replace</td></tr>
