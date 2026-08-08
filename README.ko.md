@@ -2,7 +2,9 @@
 
 **파일 하나. 도구 하나. 매일 하는 사무 작업 전부.**
 
-[English README](./README.md)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
+[**▶ 바로 써보기**](https://samcheonghaus.github.io/DeskHaus/) · [English README](./README.md)
 
 DeskHaus는 **HTML 파일 하나**로 브라우저에서 바로 실행되는 가벼운 사무 도구 모음입니다. 설치도, 서버도, 계정도 필요 없습니다. 문서 작성, 이미지 편집, 스프레드시트 계산, PDF 처리, 프레젠테이션 제작, 3D 캐드 도면 보기까지 한곳에서 해결합니다. 모든 작업은 내 컴퓨터 안에서만 이루어집니다.
 
@@ -102,6 +104,16 @@ DeskHaus는 **HTML 파일 하나**로 브라우저에서 바로 실행되는 가
 
 모든 작업은 브라우저 안에서만 실행됩니다. 파일이 어디에도 업로드되지 않으며, 네트워크 통신은 CDN에서 라이브러리를 내려받는 것이 전부입니다.
 
-## 라이선스 안내
+## 라이선스
 
-이 프로젝트는 각자의 라이선스를 가진 외부 라이브러리를 사용합니다. HyperFormula(**GPL v3** — 무료 라이선스 키를 사용하므로 이 프로젝트를 배포할 때 GPL 호환이 필요합니다), occt-import-js를 통한 OpenCascade(**LGPL 2.1**), 그리고 MIT/Apache 라이선스 라이브러리(Three.js, pdf-lib, SheetJS 등)가 포함됩니다. 포크하거나 재배포할 경우 각 라이선스를 확인해 주세요.
+DeskHaus는 **GNU General Public License v3.0** 을 따르는 자유 소프트웨어입니다. ([LICENSE](./LICENSE))
+
+누구나 자유롭게 쓰고, 복사하고, 고치고, 나눠줄 수 있습니다. 상업적 이용도 가능합니다. 다만 고친 것을 배포할 때는 그 소스도 같은 라이선스로 공개해야 합니다.
+
+`index.html` 파일 하나가 곧 전체 소스 코드입니다. 브라우저에서 '페이지 소스 보기'를 누르면 전부 확인할 수 있습니다.
+
+### 왜 GPLv3 인가
+
+표 계산 엔진인 [HyperFormula](https://hyperformula.handsontable.com/)가 이중 라이선스 방식입니다. DeskHaus는 무료인 `gpl-v3` 키를 사용하며, 이 경우 프로젝트 전체를 GPL 호환 라이선스로 배포해야 합니다. 비공개 상용 소프트웨어에 넣어야 한다면 Handsontable에서 상용 라이선스를 구매할 수 있습니다.
+
+그 외 사용 라이브러리: occt-import-js를 통한 OpenCascade(**LGPL 2.1**), 그리고 MIT/Apache/BSD 라이선스 라이브러리(Three.js, pdf.js, pdf-lib, SheetJS, mammoth, docx, PptxGenJS, JSZip). 전체 출처는 `index.html` 상단 주석에 정리되어 있습니다.

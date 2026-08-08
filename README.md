@@ -2,7 +2,9 @@
 
 **One file. One tool. Your everyday office work.**
 
-[한국어 README (Korean)](./README.ko.md)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
+[**▶ Try it live**](https://samcheonghaus.github.io/DeskHaus/) · [한국어 README (Korean)](./README.ko.md)
 
 DeskHaus is a lightweight office suite that runs entirely in your browser from a **single HTML file** — no installation, no server, no account. Write documents, edit images, calculate in spreadsheets, handle PDFs, build slides, and view 3D CAD models, all in one place. Your files never leave your computer.
 
@@ -102,6 +104,16 @@ Single-file HTML + vanilla JavaScript. Libraries loaded from CDN:
 
 Everything runs locally in your browser. No files are uploaded anywhere; the only network traffic is downloading the libraries themselves from CDNs.
 
-## License Notes
+## License
 
-This project bundles usage of third-party libraries under their own licenses, including HyperFormula (**GPL v3** — the free license key is used, which requires GPL-compatible distribution of this project), OpenCascade via occt-import-js (**LGPL 2.1**), and MIT/Apache-licensed libraries (Three.js, pdf-lib, SheetJS, and others). If you fork or redistribute, please review these licenses.
+DeskHaus is free software licensed under the **GNU General Public License v3.0**. See [LICENSE](./LICENSE).
+
+You may use, copy, modify, and share it freely — including commercially. If you distribute a modified version, you must release its source under the same license.
+
+The single `index.html` file **is** the complete source code; opening "View page source" in a browser shows everything.
+
+### Why GPLv3
+
+The spreadsheet engine, [HyperFormula](https://hyperformula.handsontable.com/), is dual-licensed. DeskHaus uses its free `gpl-v3` key, which requires the project as a whole to be distributed under a GPL-compatible license. A commercial license is available from Handsontable for anyone who needs to embed it in closed-source software.
+
+Other bundled libraries: OpenCascade via occt-import-js (**LGPL 2.1**), and MIT/Apache/BSD-licensed libraries (Three.js, pdf.js, pdf-lib, SheetJS, mammoth, docx, PptxGenJS, JSZip). Full attributions are listed in the header comment of `index.html`.

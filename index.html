@@ -1,4 +1,44 @@
 <!DOCTYPE html>
+<!--
+  ============================================================================
+  DeskHaus — One file. One tool. Your everyday office work.
+  하나로 쓰는 사무 도구 (글 · 그림 · 표 · PDF · PPT · 3D)
+
+  Copyright (C) 2026  Kim Jin Baek (samcheonghaus)
+  Source code: https://github.com/samcheonghaus/DeskHaus
+
+  This program is free software: you can redistribute it and/or modify it
+  under the terms of the GNU General Public License as published by the
+  Free Software Foundation, either version 3 of the License, or (at your
+  option) any later version.
+
+  This program is distributed in the hope that it will be useful, but
+  WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+  General Public License for more details.
+  <https://www.gnu.org/licenses/gpl-3.0.html>
+
+  이 파일 자체가 전체 소스 코드입니다. (브라우저에서 '페이지 소스 보기')
+
+  ---------------------------------------------------------------------------
+  THIRD-PARTY LIBRARIES (loaded from public CDNs)
+  ---------------------------------------------------------------------------
+   HyperFormula      GPLv3 (free 'gpl-v3' key)  https://hyperformula.handsontable.com/
+   occt-import-js    LGPL-2.1  (OpenCascade)    https://github.com/kovacsv/occt-import-js
+   Three.js          MIT                        https://threejs.org/
+   pdf.js            Apache-2.0                 https://mozilla.github.io/pdf.js/
+   pdf-lib           MIT                        https://pdf-lib.js.org/
+   SheetJS (xlsx)    Apache-2.0                 https://sheetjs.com/
+   mammoth.js        BSD-2-Clause               https://github.com/mwilliamson/mammoth.js
+   docx              MIT                        https://docx.js.org/
+   PptxGenJS         MIT                        https://gitbrent.github.io/PptxGenJS/
+   JSZip             MIT / GPLv3                https://stuk.github.io/jszip/
+
+  Because HyperFormula is used under its free GPLv3 license key, DeskHaus as
+  a whole is distributed under the GNU General Public License v3.0.
+  HyperFormula 을 무료 GPLv3 키로 사용하므로, DeskHaus 전체도 GPLv3 로 배포됩니다.
+  ============================================================================
+-->
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -624,6 +664,10 @@
   <span class="calc" id="statCalc"></span>
   <span id="statMsg"></span>
   <span class="hint" id="statHint" data-i18n="statHintDoc">숫자를 드래그 선택하면 합계·평균이 여기에 표시됩니다</span>
+  <a id="srcLink" href="https://github.com/samcheonghaus/DeskHaus" target="_blank" rel="noopener"
+     data-i18n-title="tSrcLink" title="소스 코드 · GPLv3 오픈소스"
+     style="margin-left:14px; color:var(--muted); text-decoration:none; font-size:12px; flex-shrink:0;"
+  >GPLv3 · <span style="text-decoration:underline;">GitHub</span></a>
 </footer>
 
 <!-- 숨김 파일 입력 -->
@@ -799,6 +843,7 @@ const I18N = {
     pvNone:'(없음)', pvSum:'합계', pvCount:'개수', pvAvg:'평균', pvMin:'최소', pvMax:'최대', pvTotal:'총합계',
     pvHint:'첫 행을 머리글로 보고, 결과는 현재 선택한 셀 위치에 넣습니다.',
     helpBtn:'❓ 설명서',
+    tSrcLink:'소스 코드 보기 · GPLv3 오픈소스',
     mHelpBlocked:'설명서 창이 차단되었습니다. 브라우저의 팝업 차단을 허용해 주세요.',
     mPivotNeed:'피벗을 만들려면 머리글 1행 + 데이터가 필요합니다.',
     cfPivotOverwrite:'선택한 위치에 이미 값이 있습니다. 덮어쓸까요?',
@@ -939,6 +984,7 @@ const I18N = {
     pvNone:'(none)', pvSum:'Sum', pvCount:'Count', pvAvg:'Average', pvMin:'Min', pvMax:'Max', pvTotal:'Grand total',
     pvHint:'The first row is treated as headers; the result is placed at the currently selected cell.',
     helpBtn:'❓ Help',
+    tSrcLink:'View source code · GPLv3 open source',
     mHelpBlocked:'The guide window was blocked. Please allow pop-ups for this page.',
     mPivotNeed:'A header row plus data rows are needed to build a pivot.',
     cfPivotOverwrite:'The target area already has values. Overwrite?',
@@ -3681,6 +3727,7 @@ $('d3SaveDxf').onclick = async ()=>{
 
 
 /* ═══════════════ 설명서 ═══════════════ */
+const REPO = 'https://github.com/samcheonghaus/DeskHaus';
 const HELP_CONTENT = {
   ko: [
     {
@@ -3696,7 +3743,15 @@ const HELP_CONTENT = {
   <li>처음 사용 시 라이브러리(계산 엔진, PDF 도구 등)를 CDN에서 자동으로 받아오므로 <b>인터넷 연결</b>이 필요합니다.</li>
 </ul>
 <h4>언어 전환</h4>
-<p>오른쪽 상단 <span class="tag">EN</span> 버튼으로 한국어 ↔ English를 즉시 전환할 수 있습니다.</p>`
+<p>오른쪽 상단 <span class="tag">EN</span> 버튼으로 한국어 ↔ English를 즉시 전환할 수 있습니다.</p>
+<h4>라이선스 · 소스 코드</h4>
+<p>DeskHaus는 <b>GPLv3 오픈소스</b>입니다. 자유롭게 쓰고, 복사하고, 고치고, 나눠주셔도 됩니다.
+다만 고친 것을 배포할 때는 소스를 함께 공개해야 합니다.</p>
+<ul>
+  <li>소스 코드: <a href="${REPO}" target="_blank" rel="noopener">${REPO}</a></li>
+  <li>이 파일(<code>index.html</code>) 자체가 전체 소스입니다 — 브라우저에서 '페이지 소스 보기'로 확인할 수 있습니다.</li>
+  <li>표 계산에 쓰인 HyperFormula가 GPLv3 무료 키로 동작하므로, DeskHaus 전체도 GPLv3를 따릅니다.</li>
+</ul>`
     },
     {
       id:'doc', label:'📝 글',
@@ -3890,7 +3945,14 @@ const HELP_CONTENT = {
   <li>An <b>internet connection</b> is required the first time — libraries are loaded from a CDN and cached afterwards.</li>
 </ul>
 <h4>Switch language</h4>
-<p>Click the <span class="tag">EN</span> button at the top right to toggle between Korean and English.</p>`
+<p>Click the <span class="tag">EN</span> button at the top right to toggle between Korean and English.</p>
+<h4>License & source code</h4>
+<p>DeskHaus is <b>free software under the GPLv3</b>. You may use, copy, modify, and share it freely — if you distribute a modified version, you must share its source too.</p>
+<ul>
+  <li>Source: <a href="${REPO}" target="_blank" rel="noopener">${REPO}</a></li>
+  <li>This file (<code>index.html</code>) <i>is</i> the complete source — just use "View page source" in your browser.</li>
+  <li>The spreadsheet engine (HyperFormula) runs under its free GPLv3 key, so DeskHaus as a whole is GPLv3.</li>
+</ul>`
     },
     {
       id:'doc', label:'📝 Text',
@@ -4148,7 +4210,11 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:0 0 40px;}
     <div class="lang" data-l="en" style="display:${LANG==='en'?'block':'none'}">${sec('en')}</div>
   </main>
 </div>
-<footer>DeskHaus · ${new Date().getFullYear()}</footer>
+<footer>
+  DeskHaus · © ${new Date().getFullYear()} Kim Jin Baek ·
+  <a href="https://github.com/samcheonghaus/DeskHaus" target="_blank" rel="noopener" style="color:var(--accent);">GitHub</a> ·
+  <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener" style="color:var(--accent);">GPLv3</a>
+</footer>
 <script>
 var LG = ${JSON.stringify(LANG)};
 var TT = ${JSON.stringify(T2)};
