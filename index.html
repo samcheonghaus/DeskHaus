@@ -14,6 +14,8 @@
 <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/occt-import-js@0.0.23/dist/occt-import-js.js"></script>
 <style>
   :root{
     --bg:#EDEFF2; --panel:#FFFFFF; --ink:#22262B; --muted:#6B7482;
@@ -106,8 +108,32 @@
     background:#fff; font-size:13px; cursor:cell; padding:2px 6px;
     white-space:nowrap; color:var(--ink);
   }
-  #sheetTable td.sel{ outline:2px solid var(--accent); outline-offset:-2px; }
-  #sheetTable td.editing{ background:#fff; }
+  #sheetTable td.rsel{ background:#E9F0FA; }
+  #sheetTable td.sel{ outline:2px solid var(--accent); outline-offset:-2px; background:#fff; }
+  #sheetTable td.fsel{ outline:1.5px dashed var(--accent); outline-offset:-2px; }
+  #sheetTable td.editing{ background:#fff; outline:2px solid var(--accent); outline-offset:-2px; }
+  #sheetTable th.hsel{ background:#DCE6F5; color:var(--accent); }
+  #sheetScroll{ position:relative; }
+  #shFillHandle{
+    display:none; position:absolute; width:8px; height:8px; z-index:3;
+    background:var(--accent); border:1.5px solid #fff; cursor:crosshair;
+  }
+  #shStats{
+    padding:0 14px; font-size:12.5px; color:var(--accent); white-space:pre;
+    border-left:1px solid var(--line); align-self:stretch; display:flex; align-items:center;
+    flex-shrink:0;
+  }
+
+  /* 3D(STEP) 모드 */
+  #d3Area{ flex:1; position:relative; overflow:hidden; background:var(--bg); }
+  #d3Area canvas{ display:block; }
+  #d3Empty{
+    position:absolute; left:0; right:0; top:80px; text-align:center;
+    color:var(--muted); font-size:14px; pointer-events:none;
+  }
+  /* 찾기/바꾸기 (비모달) */
+  #dlgFind{ position:fixed; top:108px; right:26px; left:auto; margin:0; z-index:50; }
+  #dlgFind .frow input{ flex:1; }
 
   /* PDF 모드 */
   #pdfArea{ flex:1; overflow:auto; display:flex; align-items:flex-start; justify-content:center; padding:26px; background:var(--bg); }
@@ -278,6 +304,7 @@
     <div class="tab" id="tabSheet"><span class="dot"></span><span data-i18n="tabSheet">표</span></div>
     <div class="tab" id="tabPdf"><span class="dot"></span><span data-i18n="tabPdf">PDF</span></div>
     <div class="tab" id="tabPpt"><span class="dot"></span><span data-i18n="tabPpt">PPT</span></div>
+    <div class="tab" id="tab3d"><span class="dot"></span><span data-i18n="tab3d">3D</span></div>
   </div>
   <button id="langBtn" title="Language / 언어" style="margin-left:auto; margin-bottom:12px;">EN</button>
 </header>
@@ -362,18 +389,56 @@
   <button id="shSaveXlsx" data-i18n="shSaveXlsx">엑셀로 저장</button>
   <button id="shSaveCsv" data-i18n="shSaveCsv">CSV로 저장</button>
   <div class="sep"></div>
+  <button id="shUndoBtn" class="icon" data-i18n-title="tShUndo" title="실행 취소 (Ctrl+Z)">↶</button>
+  <button id="shRedoBtn" class="icon" data-i18n-title="tShRedo" title="다시 실행 (Ctrl+Y)">↷</button>
+  <div class="sep"></div>
+  <button id="shAutoSum" class="icon" data-i18n-title="tShAutoSum" title="자동 합계 — 선택 범위의 합계를 넣습니다">Σ</button>
+  <button id="shPivot" data-i18n="shPivot" data-i18n-title="tShPivot" title="선택 데이터로 피벗 테이블 만들기">피벗</button>
+  <div class="sep"></div>
+  <button id="shInsRow" data-i18n="shInsRow" data-i18n-title="tShInsRow" title="선택 위치에 행 삽입">행 삽입</button>
+  <button id="shDelRow" class="danger" data-i18n="shDelRow" data-i18n-title="tShDelRow" title="선택한 행 삭제">행 삭제</button>
+  <button id="shInsCol" data-i18n="shInsCol" data-i18n-title="tShInsCol" title="선택 위치에 열 삽입">열 삽입</button>
+  <button id="shDelCol" class="danger" data-i18n="shDelCol" data-i18n-title="tShDelCol" title="선택한 열 삭제">열 삭제</button>
   <button id="shAddRow" data-i18n="shAddRow" title="맨 아래에 행 추가">＋행</button>
   <button id="shAddCol" data-i18n="shAddCol" title="맨 오른쪽에 열 추가">＋열</button>
   <div class="sep"></div>
-  <button id="shBold" class="icon" title="굵게"><b>B</b></button>
-  <input type="color" id="shColor" value="#22262B" title="글자 색">
-  <input type="color" id="shBg" value="#FFF6C2" title="셀 배경색">
-  <button id="shFill" data-i18n="shFill" title="선택 셀에 배경색 적용">칠하기</button>
+  <button id="shMerge" data-i18n="shMerge" data-i18n-title="tShMerge" title="선택 범위 병합 / 다시 누르면 해제">병합</button>
+  <button id="shFind" data-i18n="shFind" data-i18n-title="tShFind" title="찾기/바꾸기 (Ctrl+F)">찾기</button>
+  <div class="sep"></div>
+  <button id="shBold" class="icon" title="굵게 (Ctrl+B)"><b>B</b></button>
+  <button id="shItalic" class="icon" title="기울임 (Ctrl+I)"><i>I</i></button>
+  <button id="shUnder" class="icon" title="밑줄 (Ctrl+U)"><u>U</u></button>
+  <input type="color" id="shColor" value="#22262B" data-i18n-title="tShColor" title="글자 색 — 고르면 바로 적용">
+  <input type="color" id="shBg" value="#FFF6C2" data-i18n-title="tShBg" title="셀 배경색 — 고르면 바로 적용">
+  <div class="sep"></div>
+  <button id="shAlignL" class="icon" title="왼쪽 정렬">⯇</button>
+  <button id="shAlignC" class="icon" title="가운데 정렬">≡</button>
+  <button id="shAlignR" class="icon" title="오른쪽 정렬">⯈</button>
+  <div class="sep"></div>
+  <button id="shComma" class="icon" data-i18n-title="tShComma" title="천 단위 쉼표">,</button>
+  <button id="shPct" class="icon" data-i18n-title="tShPct" title="백분율 표시">%</button>
+  <button id="shDecDec" class="icon" data-i18n-title="tShDecDec" title="소수 자릿수 줄이기">.0→</button>
+  <button id="shDecInc" class="icon" data-i18n-title="tShDecInc" title="소수 자릿수 늘리기">←.00</button>
   <div class="sep"></div>
   <button id="shSortAsc" data-i18n="shSortAsc" title="선택한 열 기준 오름차순 정렬">↑ 정렬</button>
   <button id="shSortDesc" data-i18n="shSortDesc" title="선택한 열 기준 내림차순 정렬">↓ 정렬</button>
   <div class="sep"></div>
   <button id="shToDoc" data-i18n="shToDoc" title="현재 표를 문서(글 모드)에 삽입">문서로 보내기 →</button>
+</div>
+
+<!-- ══ 3D(STEP) 모드 툴바 ══ -->
+<div class="toolbar" id="tb3d" style="display:none;">
+  <button id="d3Open" class="primary" data-i18n="d3Open">STEP 열기</button>
+  <div class="sep"></div>
+  <button id="d3Front" data-i18n="d3Front" title="정면에서 보기">정면</button>
+  <button id="d3Top" data-i18n="d3Top" title="위에서 보기">윗면</button>
+  <button id="d3Right" data-i18n="d3Right" title="오른쪽에서 보기">우측</button>
+  <button id="d3Iso" data-i18n="d3Iso" title="입체(등각)로 보기">입체</button>
+  <button id="d3FitBtn" data-i18n="d3FitBtn" title="모델을 화면에 맞춤">화면 맞춤</button>
+  <button id="d3WireBtn" data-i18n="d3WireBtn" title="면/선(와이어프레임) 전환">면/선</button>
+  <div class="sep"></div>
+  <button id="d3SavePdf" data-i18n="d3SavePdf" title="정면·윗면·우측·등각 4면도를 PDF 도면으로 저장">PDF 도면 저장</button>
+  <button id="d3SaveDxf" data-i18n="d3SaveDxf" title="DXF로 저장 — AutoCAD 등 캐드에서 열어 DWG로 저장할 수 있습니다">DXF 저장 (캐드용)</button>
 </div>
 
 <!-- ══ PDF 모드 툴바 ══ -->
@@ -506,9 +571,11 @@
       <div id="formulaBar">
         <span id="cellRef">A1</span>
         <input type="text" id="formulaInput" spellcheck="false" placeholder="">
+        <span id="shStats"></span>
       </div>
       <div id="sheetScroll">
         <table id="sheetTable"></table>
+        <div id="shFillHandle" title="드래그하여 자동 채우기"></div>
       </div>
     </div>
   </div>
@@ -531,6 +598,12 @@
         </div>
         <textarea id="ppNotes" spellcheck="false"></textarea>
       </div>
+    </div>
+  </div>
+  <!-- 3D(STEP) 모드 -->
+  <div class="mode" id="mode3d">
+    <div id="d3Area">
+      <div id="d3Empty" data-i18n="d3EmptyMsg">"STEP 열기"를 눌러 3D 도면 파일(.step, .stp)을 여세요.</div>
     </div>
   </div>
 </main>
@@ -560,6 +633,7 @@
 <input type="file" id="fileXlsx" accept=".xlsx,.xls,.csv" hidden>
 <input type="file" id="fileLogo" accept="image/*" hidden>
 <input type="file" id="fileSheetOpen" accept=".xlsx,.xls,.csv" hidden>
+<input type="file" id="fileStepOpen" accept=".step,.stp" hidden>
 <input type="file" id="filePdfOpen" accept=".pdf" hidden>
 <input type="file" id="filePdfAdd" accept=".pdf" hidden>
 <input type="file" id="filePptOpen" accept=".pptx" hidden>
@@ -595,6 +669,38 @@
   <div class="frow"><label data-i18n="lblRows">행</label><input type="number" id="tRows" value="3" min="1" max="50"></div>
   <div class="frow"><label data-i18n="lblCols">열</label><input type="number" id="tCols" value="3" min="1" max="20"></div>
   <div class="btns"><button onclick="dlgTable.close()" data-i18n="btnCancel">취소</button><button class="primary" id="tOk" data-i18n="btnInsert">삽입</button></div>
+</dialog>
+
+<!-- 피벗 테이블 대화상자 -->
+<dialog id="dlgPivot">
+  <h4 data-i18n="dlgPivotTitle">피벗 테이블</h4>
+  <div class="frow"><label data-i18n="pvLblRow">행 필드</label><select id="pvRow" style="flex:1;"></select></div>
+  <div class="frow"><label data-i18n="pvLblCol">열 필드</label><select id="pvCol" style="flex:1;"></select></div>
+  <div class="frow"><label data-i18n="pvLblVal">값 필드</label><select id="pvVal" style="flex:1;"></select></div>
+  <div class="frow"><label data-i18n="pvLblAgg">계산</label>
+    <select id="pvAgg" style="flex:1;">
+      <option value="sum" data-i18n="pvSum">합계</option>
+      <option value="count" data-i18n="pvCount">개수</option>
+      <option value="avg" data-i18n="pvAvg">평균</option>
+      <option value="min" data-i18n="pvMin">최소</option>
+      <option value="max" data-i18n="pvMax">최대</option>
+    </select>
+  </div>
+  <p style="font-size:12px; color:var(--muted); margin:2px 0 12px;" data-i18n="pvHint">첫 행을 머리글로 보고, 결과는 현재 선택한 셀 위치에 넣습니다.</p>
+  <div class="btns"><button id="pvCancel" data-i18n="btnCancel">취소</button><button class="primary" id="pvOk" data-i18n="btnOk">확인</button></div>
+</dialog>
+
+<!-- 찾기/바꾸기 대화상자 (비모달) -->
+<dialog id="dlgFind">
+  <h4 data-i18n="dlgFindTitle">찾기 / 바꾸기</h4>
+  <div class="frow"><label data-i18n="fLblFind">찾기</label><input type="text" id="fFindTxt"></div>
+  <div class="frow"><label data-i18n="fLblRep">바꾸기</label><input type="text" id="fRepTxt"></div>
+  <div class="btns">
+    <button id="fClose" data-i18n="btnClose">닫기</button>
+    <button id="fRepOne" data-i18n="fRepOne">바꾸기</button>
+    <button id="fRepAll" data-i18n="fRepAll">모두 바꾸기</button>
+    <button class="primary" id="fNext" data-i18n="fNext">다음 찾기</button>
+  </div>
 </dialog>
 
 <!-- 텍스트 추가 대화상자 -->
@@ -677,9 +783,46 @@ const I18N = {
     welcomeP1:'이곳에 바로 글을 쓰세요. 위쪽 레터헤드에 로고와 이름·연락처를 넣으면 편지지처럼 쓸 수 있습니다.',
     welcomeP2:'표를 넣고, 이미지를 넣고, 이미지를 더블클릭하면 그림 모드에서 편집한 뒤 다시 문서에 적용할 수 있습니다.',
     tabSheet:'표',
-    statModeSheet:'표 모드', statHintSheet:'셀을 더블클릭해 입력, =A1+B1 이나 =SUM(A1:A10) 처럼 수식도 됩니다',
+    statModeSheet:'표 모드', statHintSheet:'드래그로 범위 선택 · =SUM(A1:A10) 수식 · Σ 자동합계 · Ctrl+C/V 복사·붙여넣기 · Ctrl+F 찾기 · 모서리 핸들로 자동 채우기',
     shNew:'새 표', shOpen:'엑셀·CSV 열기', shSaveXlsx:'엑셀로 저장', shSaveCsv:'CSV로 저장',
-    shAddRow:'＋행', shAddCol:'＋열', shFill:'칠하기', shSortAsc:'↑ 정렬', shSortDesc:'↓ 정렬', shToDoc:'문서로 보내기 →',
+    shAddRow:'＋행', shAddCol:'＋열', shSortAsc:'↑ 정렬', shSortDesc:'↓ 정렬', shToDoc:'문서로 보내기 →',
+    shPivot:'피벗', shInsRow:'행 삽입', shDelRow:'행 삭제', shInsCol:'열 삽입', shDelCol:'열 삭제',
+    tShUndo:'실행 취소 (Ctrl+Z)', tShRedo:'다시 실행 (Ctrl+Y)',
+    tShAutoSum:'자동 합계 — 선택 범위의 합계를 넣습니다', tShPivot:'선택 데이터로 피벗 테이블 만들기',
+    tShInsRow:'선택 위치에 행 삽입', tShDelRow:'선택한 행 삭제', tShInsCol:'선택 위치에 열 삽입', tShDelCol:'선택한 열 삭제',
+    tShComma:'천 단위 쉼표', tShPct:'백분율 표시', tShDecDec:'소수 자릿수 줄이기', tShDecInc:'소수 자릿수 늘리기',
+    mCopied:'복사했습니다. 원하는 셀에서 Ctrl+V로 붙여넣으세요.', mCut:'잘라냈습니다. 원하는 셀에서 Ctrl+V로 붙여넣으세요.',
+    mPasted:'붙여넣었습니다.', mNoUndo:'되돌릴 작업이 없습니다.', mNoRedo:'다시 실행할 작업이 없습니다.',
+    mAutoSum:'합계 수식을 넣었습니다.', mNoNums:'주변에 합칠 숫자가 없습니다. 숫자 아래나 오른쪽 셀을 선택하세요.',
+    mRowIns:'행을 삽입했습니다.', mRowDel:'행을 삭제했습니다.', mColIns:'열을 삽입했습니다.', mColDel:'열을 삭제했습니다.',
+    dlgPivotTitle:'피벗 테이블', pvLblRow:'행 필드', pvLblCol:'열 필드', pvLblVal:'값 필드', pvLblAgg:'계산',
+    pvNone:'(없음)', pvSum:'합계', pvCount:'개수', pvAvg:'평균', pvMin:'최소', pvMax:'최대', pvTotal:'총합계',
+    pvHint:'첫 행을 머리글로 보고, 결과는 현재 선택한 셀 위치에 넣습니다.',
+    mPivotNeed:'피벗을 만들려면 머리글 1행 + 데이터가 필요합니다.',
+    cfPivotOverwrite:'선택한 위치에 이미 값이 있습니다. 덮어쓸까요?',
+    mPivotDone:'피벗 테이블을 만들었습니다.',
+    shMerge:'병합', shFind:'찾기', tShMerge:'선택 범위 병합 / 다시 누르면 해제', tShFind:'찾기/바꾸기 (Ctrl+F)',
+    tShColor:'글자 색 — 고르면 바로 적용', tShBg:'셀 배경색 — 고르면 바로 적용',
+    mMerged:'셀을 병합했습니다. 같은 범위를 선택하고 다시 누르면 해제됩니다.',
+    mUnmerged:'병합을 해제했습니다.', mMergeNeed:'두 칸 이상 선택한 뒤 병합을 누르세요.',
+    cfMerge:'병합하면 왼쪽 위 값만 남습니다. 계속할까요?',
+    mSortMerged:'병합된 셀이 있으면 정렬할 수 없습니다. 병합을 해제한 뒤 정렬하세요.',
+    dlgFindTitle:'찾기 / 바꾸기', fLblFind:'찾기', fLblRep:'바꾸기',
+    fNext:'다음 찾기', fRepOne:'바꾸기', fRepAll:'모두 바꾸기', btnClose:'닫기',
+    mFindEmpty:'찾을 내용을 입력하세요.', mFindNone:'찾는 내용이 없습니다.',
+    mRepDone:'{n}개 셀에서 바꿨습니다.',
+    /* 3D 모드 */
+    tab3d:'3D', statMode3d:'3D 도면 모드',
+    statHint3d:'마우스 드래그로 회전, 휠로 확대·축소, 오른쪽 버튼(또는 Shift) 드래그로 이동',
+    d3Open:'STEP 열기', d3Front:'정면', d3Top:'윗면', d3Right:'우측', d3Iso:'입체',
+    d3FitBtn:'화면 맞춤', d3WireBtn:'면/선', d3SavePdf:'PDF 도면 저장', d3SaveDxf:'DXF 저장 (캐드용)',
+    d3EmptyMsg:'"STEP 열기"를 눌러 3D 도면 파일(.step, .stp)을 여세요.',
+    m3dNoMod:'3D 모듈을 불러오지 못했습니다 (인터넷 연결 필요).',
+    m3dNoOcct:'STEP 판독 모듈을 불러오지 못했습니다 (인터넷 연결 필요).',
+    m3dLoading:'STEP 파일을 읽는 중입니다… 처음에는 판독 모듈을 내려받아 잠시 걸릴 수 있습니다.',
+    m3dOpened:' 을(를) 열었습니다. 드래그로 돌려보세요.',
+    m3dFail:'STEP 파일을 읽지 못했습니다.', m3dOpenFirst:'먼저 STEP 파일을 여세요.',
+    m3dDxfDone:'DXF로 저장했습니다. AutoCAD 등 캐드에서 열어 DWG로 저장할 수 있습니다.',
     mSheetNoMod:'표 계산 모듈을 불러오지 못했습니다 (인터넷 연결 필요).',
     mNewSheet:'새 표를 시작합니다.', cfNewSheet:'현재 표 내용이 모두 지워집니다. 저장하지 않은 내용은 복구할 수 없습니다. 새 표를 시작할까요?',
     mSortedAsc:'오름차순으로 정렬했습니다.', mSortedDesc:'내림차순으로 정렬했습니다.',
@@ -778,9 +921,46 @@ const I18N = {
     welcomeP1:'Start writing right here. Add your logo, name, and contact info to the letterhead above to use it like stationery.',
     welcomeP2:'Insert tables and images. Double-click an image to edit it in Image mode, then apply it back to the document.',
     tabSheet:'Sheet',
-    statModeSheet:'Sheet mode', statHintSheet:'Double-click a cell to type. Formulas work too, e.g. =A1+B1 or =SUM(A1:A10)',
+    statModeSheet:'Sheet mode', statHintSheet:'Drag to select a range · formulas like =SUM(A1:A10) · Σ AutoSum · Ctrl+C/V copy & paste · Ctrl+F find · drag the corner handle to auto-fill',
     shNew:'New sheet', shOpen:'Open Excel/CSV', shSaveXlsx:'Save as Excel', shSaveCsv:'Save as CSV',
-    shAddRow:'+Row', shAddCol:'+Col', shFill:'Fill', shSortAsc:'↑ Sort', shSortDesc:'↓ Sort', shToDoc:'Send to document →',
+    shAddRow:'+Row', shAddCol:'+Col', shSortAsc:'↑ Sort', shSortDesc:'↓ Sort', shToDoc:'Send to document →',
+    shPivot:'Pivot', shInsRow:'Insert row', shDelRow:'Delete row', shInsCol:'Insert col', shDelCol:'Delete col',
+    tShUndo:'Undo (Ctrl+Z)', tShRedo:'Redo (Ctrl+Y)',
+    tShAutoSum:'AutoSum — insert a sum of the selection', tShPivot:'Build a pivot table from your data',
+    tShInsRow:'Insert row(s) at selection', tShDelRow:'Delete selected row(s)', tShInsCol:'Insert column(s) at selection', tShDelCol:'Delete selected column(s)',
+    tShComma:'Thousands separator', tShPct:'Percent format', tShDecDec:'Decrease decimals', tShDecInc:'Increase decimals',
+    mCopied:'Copied. Press Ctrl+V on the target cell to paste.', mCut:'Cut. Press Ctrl+V on the target cell to paste.',
+    mPasted:'Pasted.', mNoUndo:'Nothing to undo.', mNoRedo:'Nothing to redo.',
+    mAutoSum:'Inserted the SUM formula.', mNoNums:'No adjacent numbers to sum. Select a cell below or to the right of numbers.',
+    mRowIns:'Row inserted.', mRowDel:'Row deleted.', mColIns:'Column inserted.', mColDel:'Column deleted.',
+    dlgPivotTitle:'Pivot table', pvLblRow:'Row field', pvLblCol:'Column field', pvLblVal:'Value field', pvLblAgg:'Aggregate',
+    pvNone:'(none)', pvSum:'Sum', pvCount:'Count', pvAvg:'Average', pvMin:'Min', pvMax:'Max', pvTotal:'Grand total',
+    pvHint:'The first row is treated as headers; the result is placed at the currently selected cell.',
+    mPivotNeed:'A header row plus data rows are needed to build a pivot.',
+    cfPivotOverwrite:'The target area already has values. Overwrite?',
+    mPivotDone:'Pivot table created.',
+    shMerge:'Merge', shFind:'Find', tShMerge:'Merge selection / click again to unmerge', tShFind:'Find & replace (Ctrl+F)',
+    tShColor:'Text color — applies as you pick', tShBg:'Cell fill color — applies as you pick',
+    mMerged:'Cells merged. Select the same range and click again to unmerge.',
+    mUnmerged:'Cells unmerged.', mMergeNeed:'Select two or more cells first.',
+    cfMerge:'Merging keeps only the upper-left value. Continue?',
+    mSortMerged:'Cannot sort while merged cells exist. Unmerge them first.',
+    dlgFindTitle:'Find / Replace', fLblFind:'Find', fLblRep:'Replace',
+    fNext:'Find next', fRepOne:'Replace', fRepAll:'Replace all', btnClose:'Close',
+    mFindEmpty:'Type something to find.', mFindNone:'No matches found.',
+    mRepDone:'Replaced in {n} cell(s).',
+    /* 3D mode */
+    tab3d:'3D', statMode3d:'3D drawing mode',
+    statHint3d:'Drag to rotate, scroll to zoom, right-drag (or Shift-drag) to pan',
+    d3Open:'Open STEP', d3Front:'Front', d3Top:'Top', d3Right:'Right', d3Iso:'Iso',
+    d3FitBtn:'Fit view', d3WireBtn:'Faces/wire', d3SavePdf:'Save PDF drawing', d3SaveDxf:'Save DXF (for CAD)',
+    d3EmptyMsg:'Click "Open STEP" to open a 3D model file (.step, .stp).',
+    m3dNoMod:'Could not load the 3D module (internet required).',
+    m3dNoOcct:'Could not load the STEP reader module (internet required).',
+    m3dLoading:'Reading the STEP file… the first time may take a moment while the reader downloads.',
+    m3dOpened:' opened. Drag to rotate.',
+    m3dFail:'Could not read the STEP file.', m3dOpenFirst:'Open a STEP file first.',
+    m3dDxfDone:'Saved as DXF. Open it in AutoCAD or another CAD app and save as DWG.',
     mSheetNoMod:'Could not load the calculation module (internet required).',
     mNewSheet:'Started a new sheet.', cfNewSheet:'The current sheet will be cleared. Unsaved content cannot be recovered. Start a new sheet?',
     mSortedAsc:'Sorted ascending.', mSortedDesc:'Sorted descending.',
@@ -832,11 +1012,11 @@ function applyLang(){
     const k = el.getAttribute('data-i18n-title'); if(I18N[LANG][k]!==undefined) el.title = I18N[LANG][k];
   });
   /* 상태바 모드/힌트는 현재 모드에 맞게 */
-  const mmAll = {doc:'modeDoc', img:'modeImg', sheet:'modeSheet', pdf:'modePdf', ppt:'modePpt'};
+  const mmAll = {doc:'modeDoc', img:'modeImg', sheet:'modeSheet', pdf:'modePdf', ppt:'modePpt', d3:'mode3d'};
   let curMode = 'doc';
   for(const k in mmAll){ const el = document.getElementById(mmAll[k]); if(el && el.classList.contains('active')) curMode = k; }
-  const lbAll = {doc:'statModeDoc', img:'statModeImg', sheet:'statModeSheet', pdf:'statModePdf', ppt:'statModePpt'};
-  const htAll = {doc:'statHintDoc', img:'statHintImg', sheet:'statHintSheet', pdf:'statHintPdf', ppt:'statHintPpt'};
+  const lbAll = {doc:'statModeDoc', img:'statModeImg', sheet:'statModeSheet', pdf:'statModePdf', ppt:'statModePpt', d3:'statMode3d'};
+  const htAll = {doc:'statHintDoc', img:'statHintImg', sheet:'statHintSheet', pdf:'statHintPdf', ppt:'statHintPpt', d3:'statHint3d'};
   document.getElementById('statMode').textContent = T(lbAll[curMode]);
   document.getElementById('statHint').textContent = T(htAll[curMode]);
   const pn = document.getElementById('ppNotes'); if(pn) pn.placeholder = T('ppNotesPh');
@@ -925,27 +1105,29 @@ function askConfirm(text){
 
 /* 모드 전환 */
 function setMode(m){
-  const modes = { doc:'modeDoc', img:'modeImg', sheet:'modeSheet', pdf:'modePdf', ppt:'modePpt' };
-  const tabs = { doc:'tabDoc', img:'tabImg', sheet:'tabSheet', pdf:'tabPdf', ppt:'tabPpt' };
-  const bars = { doc:'tbDoc', img:'tbImg', sheet:'tbSheet', pdf:'tbPdf', ppt:'tbPpt' };
+  const modes = { doc:'modeDoc', img:'modeImg', sheet:'modeSheet', pdf:'modePdf', ppt:'modePpt', d3:'mode3d' };
+  const tabs = { doc:'tabDoc', img:'tabImg', sheet:'tabSheet', pdf:'tabPdf', ppt:'tabPpt', d3:'tab3d' };
+  const bars = { doc:'tbDoc', img:'tbImg', sheet:'tbSheet', pdf:'tbPdf', ppt:'tbPpt', d3:'tb3d' };
   for(const k in modes){
     $(tabs[k]).classList.toggle('active', k===m);
     $(modes[k]).classList.toggle('active', k===m);
     $(bars[k]).style.display = (k===m) ? 'flex' : 'none';
   }
-  const label = { doc:'statModeDoc', img:'statModeImg', sheet:'statModeSheet', pdf:'statModePdf', ppt:'statModePpt' };
-  const hint = { doc:'statHintDoc', img:'statHintImg', sheet:'statHintSheet', pdf:'statHintPdf', ppt:'statHintPpt' };
+  const label = { doc:'statModeDoc', img:'statModeImg', sheet:'statModeSheet', pdf:'statModePdf', ppt:'statModePpt', d3:'statMode3d' };
+  const hint = { doc:'statHintDoc', img:'statHintImg', sheet:'statHintSheet', pdf:'statHintPdf', ppt:'statHintPpt', d3:'statHint3d' };
   $('statMode').textContent = T(label[m]);
   $('statHint').textContent = T(hint[m]);
   if(m==='img') render();
   if(m==='sheet'){ ensureSheet(); }
   if(m==='ppt'){ ensurePpt(); }
+  if(m==='d3'){ ensure3d(); setTimeout(d3Resize, 0); }
 }
 $('tabDoc').onclick = ()=>setMode('doc');
 $('tabImg').onclick = ()=>setMode('img');
 $('tabSheet').onclick = ()=>setMode('sheet');
 $('tabPdf').onclick = ()=>setMode('pdf');
 $('tabPpt').onclick = ()=>setMode('ppt');
+$('tab3d').onclick = ()=>setMode('d3');
 
 /* ═══════════════ 글 모드 ═══════════════ */
 const editor = $('editor');
@@ -2028,17 +2210,33 @@ editor.addEventListener('input', ()=>{ editor.dataset.welcome = '0'; });
 let hf = null;                 // HyperFormula 인스턴스
 let shRows = 30, shCols = 12;  // 격자 크기
 let shData = null;             // 원본 입력값(문자열/수식) 2차원 배열
-let shStyle = null;            // 셀 스타일 { 'r,c': {bold,color,bg} }
-let selR = 0, selC = 0;        // 선택 셀
+let shStyle = null;            // 셀 스타일 { 'r,c': {bold,italic,under,color,bg,align,comma,pct,dec} }
+let shColW = [];               // 열 너비(px)
+let selR = 0, selC = 0;        // 활성 셀
+let ancR = 0, ancC = 0;        // 선택 기준점(앵커) — 범위 = 앵커~활성
 let sheetReady = false;
+let shClip = null;             // 내부 클립보드 {mode:'copy'|'cut', r1,c1,r2,c2, tsv, styles}
+let shUndo = [], shRedo = [];  // 실행 취소 스택
+let shMerges = [];             // 병합 [{r,c,rs,cs}]
+const SH_DEFAULT_W = 92;
 
 const colName = i => { let s=''; i++; while(i>0){ i--; s=String.fromCharCode(65+i%26)+s; i=Math.floor(i/26); } return s; };
+const colIdx = s => { let n=0; for(const ch of s) n = n*26 + (ch.charCodeAt(0)-64); return n-1; };
+const sheetActive = ()=> $('modeSheet').classList.contains('active');
+const cellKey = (r,c)=> r+','+c;
+
+function selRange(){
+  return { r1:Math.min(ancR,selR), c1:Math.min(ancC,selC), r2:Math.max(ancR,selR), c2:Math.max(ancC,selC) };
+}
+function refOf(r,c){ return colName(c)+(r+1); }
+function rangeRef(r1,c1,r2,c2){ return (r1===r2&&c1===c2) ? refOf(r1,c1) : refOf(r1,c1)+':'+refOf(r2,c2); }
 
 function ensureSheet(){
   if(sheetReady) return;
   if(typeof HyperFormula === 'undefined'){ msg(T('mSheetNoMod')); return; }
   shData = Array.from({length:shRows}, ()=> Array(shCols).fill(''));
   shStyle = {};
+  shColW = Array(shCols).fill(SH_DEFAULT_W);
   buildHF();
   renderSheet();
   sheetReady = true;
@@ -2047,165 +2245,961 @@ function buildHF(){
   if(hf){ try{ hf.destroy(); }catch(e){} }
   hf = HyperFormula.buildFromArray(shData, { licenseKey:'gpl-v3' });
 }
-/* 계산된 표시값 */
-function cellDisplay(r,c){
+/* 계산된 원시값 (수식이면 결과, 아니면 입력값) */
+function cellValue(r,c){
   const raw = shData[r][c];
   if(raw === '' || raw == null) return '';
   if(typeof raw === 'string' && raw[0] === '='){
     try{
       const v = hf.getCellValue({sheet:0, row:r, col:c});
-      if(v && typeof v==='object' && v.type==='ERROR') return '#ERR';
-      return v==null ? '' : String(v);
+      if(v && typeof v==='object'){ return (typeof v.value==='string' && v.value[0]==='#') ? v.value : '#ERR'; }
+      return v==null ? '' : v;
     }catch(e){ return '#ERR'; }
   }
-  return String(raw);
+  return raw;
+}
+function toNum(v){
+  if(typeof v==='number') return v;
+  const n = parseFloat(String(v).replace(/,/g,''));
+  return (!isNaN(n) && String(v).trim()!=='') ? n : null;
+}
+/* 숫자 표시 형식 적용 */
+function fmtNum(n, st){
+  let x = st.pct ? n*100 : n;
+  let s;
+  if(st.dec!=null){
+    s = st.comma ? x.toLocaleString('en-US',{minimumFractionDigits:st.dec, maximumFractionDigits:st.dec})
+                 : x.toFixed(st.dec);
+  } else {
+    s = st.comma ? x.toLocaleString('en-US',{maximumFractionDigits:10}) : String(x);
+  }
+  return st.pct ? s+'%' : s;
+}
+/* 화면 표시 문자열 */
+function cellDisplay(r,c){
+  const v = cellValue(r,c);
+  if(v==='' || v==null) return '';
+  if(v==='#ERR') return '#ERR';
+  const st = shStyle[cellKey(r,c)] || {};
+  const n = toNum(v);
+  if(n!=null && (st.comma || st.pct || st.dec!=null)) return fmtNum(n, st);
+  return String(v);
+}
+function cellStyleStr(r,c){
+  const st = shStyle[cellKey(r,c)] || {};
+  const disp = cellDisplay(r,c);
+  const numeric = toNum(disp.replace(/%$/,''))!=null && disp!=='';
+  return [
+    st.bold?'font-weight:700':'',
+    st.italic?'font-style:italic':'',
+    st.under?'text-decoration:underline':'',
+    st.color?`color:${st.color}`:'',
+    st.bg?`background:${st.bg}`:'',
+    `text-align:${st.align || (numeric?'right':'left')}`
+  ].filter(Boolean).join(';');
 }
 function renderSheet(){
   const tb = $('sheetTable');
-  let html = '<thead><tr><th></th>';
-  for(let c=0;c<shCols;c++) html += `<th>${colName(c)}</th>`;
+  let html = '<colgroup><col style="width:44px">';
+  for(let c=0;c<shCols;c++) html += `<col style="width:${shColW[c]||SH_DEFAULT_W}px">`;
+  html += '</colgroup><thead><tr><th id="shCorner"></th>';
+  for(let c=0;c<shCols;c++) html += `<th data-hc="${c}">${colName(c)}</th>`;
   html += '</tr></thead><tbody>';
+  const covered = {};
+  const spanAt = {};
+  for(const m of shMerges){
+    spanAt[m.r+','+m.c] = m;
+    for(let r=m.r;r<m.r+m.rs;r++) for(let c=m.c;c<m.c+m.cs;c++)
+      if(r!==m.r || c!==m.c) covered[r+','+c] = true;
+  }
   for(let r=0;r<shRows;r++){
-    html += `<tr><th>${r+1}</th>`;
+    html += `<tr><th data-hr="${r}">${r+1}</th>`;
     for(let c=0;c<shCols;c++){
-      const st = shStyle[r+','+c] || {};
-      const sty = [
-        st.bold?'font-weight:700':'',
-        st.color?`color:${st.color}`:'',
-        st.bg?`background:${st.bg}`:''
-      ].filter(Boolean).join(';');
-      const cls = (r===selR&&c===selC)?'sel':'';
-      html += `<td data-r="${r}" data-c="${c}" class="${cls}" style="${sty}">${escHtml(cellDisplay(r,c))}</td>`;
+      if(covered[r+','+c]) continue;
+      const sp = spanAt[r+','+c];
+      const spanAttr = sp ? ` rowspan="${sp.rs}" colspan="${sp.cs}"` : '';
+      html += `<td data-r="${r}" data-c="${c}"${spanAttr} style="${cellStyleStr(r,c)}">${escHtml(cellDisplay(r,c))}</td>`;
     }
     html += '</tr>';
   }
   html += '</tbody>';
   tb.innerHTML = html;
-  updateFormulaBar();
+  paintSel();
 }
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function updateFormulaBar(){
-  $('cellRef').textContent = colName(selC) + (selR+1);
-  const raw = shData[selR][selC];
-  $('formulaInput').value = (raw==null) ? '' : String(raw);
+
+/* ── 선택 표시 + 상태 통계 ── */
+function paintSel(){
+  const tb = $('sheetTable');
+  tb.querySelectorAll('td.sel, td.rsel').forEach(td=>td.classList.remove('sel','rsel'));
+  tb.querySelectorAll('th.hsel').forEach(th=>th.classList.remove('hsel'));
+  const {r1,c1,r2,c2} = selRange();
+  for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++){
+    const td = tb.querySelector(`td[data-r="${r}"][data-c="${c}"]`);
+    if(td) td.classList.add('rsel');
+  }
+  const act = tb.querySelector(`td[data-r="${selR}"][data-c="${selC}"]`);
+  if(act) act.classList.add('sel');
+  for(let c=c1;c<=c2;c++){ const th=tb.querySelector(`th[data-hc="${c}"]`); if(th) th.classList.add('hsel'); }
+  for(let r=r1;r<=r2;r++){ const th=tb.querySelector(`th[data-hr="${r}"]`); if(th) th.classList.add('hsel'); }
+  /* 이름 상자 / 수식 입력줄 */
+  $('cellRef').textContent = rangeRef(r1,c1,r2,c2);
+  if(document.activeElement !== $('formulaInput')){
+    const raw = shData[selR][selC];
+    $('formulaInput').value = (raw==null) ? '' : String(raw);
+  }
+  /* 채우기 핸들 */
+  positionFillHandle();
+  /* 선택 통계 (합계·평균·개수) */
+  const stat = $('shStats');
+  if(r1===r2 && c1===c2){ stat.textContent=''; }
+  else{
+    let sum=0, nCnt=0, cnt=0;
+    for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++){
+      const v = cellValue(r,c);
+      if(v!=='' && v!=null && v!=='#ERR'){ cnt++; const n=toNum(v); if(n!=null){ sum+=n; nCnt++; } }
+    }
+    if(nCnt>0){
+      const f = x=> Math.round(x*1e6)/1e6;
+      stat.textContent = `${T('calcSum')}: ${f(sum).toLocaleString('en-US')}   ${T('calcAvg')}: ${f(sum/nCnt).toLocaleString('en-US')}   ${T('calcCount')}: ${cnt}`;
+    } else stat.textContent = cnt>0 ? `${T('calcCount')}: ${cnt}` : '';
+  }
 }
-function selectCell(r,c){
-  if(r<0||c<0||r>=shRows||c>=shCols) return;
-  document.querySelectorAll('#sheetTable td.sel').forEach(td=>td.classList.remove('sel'));
+function positionFillHandle(){
+  const fh = $('shFillHandle');
+  const {r2,c2} = selRange();
+  let td = $('sheetTable').querySelector(`td[data-r="${r2}"][data-c="${c2}"]`);
+  if(!td){ const mg = mergeAt(r2,c2); if(mg) td = $('sheetTable').querySelector(`td[data-r="${mg.r}"][data-c="${mg.c}"]`); }
+  if(!td){ fh.style.display='none'; return; }
+  fh.style.display='block';
+  fh.style.left = (td.offsetLeft + td.offsetWidth - 4) + 'px';
+  fh.style.top = (td.offsetTop + td.offsetHeight - 4) + 'px';
+}
+function mergeAt(r,c){
+  for(const m of shMerges)
+    if(r>=m.r && r<m.r+m.rs && c>=m.c && c<m.c+m.cs) return m;
+  return null;
+}
+function setSel(r,c,extend){
+  r = Math.max(0, Math.min(shRows-1, r));
+  c = Math.max(0, Math.min(shCols-1, c));
+  const mg = mergeAt(r,c);
+  if(mg){ r=mg.r; c=mg.c; }
   selR=r; selC=c;
+  if(!extend){ ancR=r; ancC=c; }
   const td = $('sheetTable').querySelector(`td[data-r="${r}"][data-c="${c}"]`);
-  if(td){ td.classList.add('sel'); if(td.scrollIntoView) td.scrollIntoView({block:'nearest', inline:'nearest'}); }
-  updateFormulaBar();
+  if(td && td.scrollIntoView) td.scrollIntoView({block:'nearest', inline:'nearest'});
+  paintSel();
 }
-/* 셀 값 설정 후 재계산 */
-function setCellValue(r,c,val){
+function selectCell(r,c){ setSel(r,c,false); }  /* 하위 호환 */
+
+/* ── 실행 취소/재실행 ── */
+function snapshot(){
+  return { data: shData.map(r=>r.slice()), style: JSON.parse(JSON.stringify(shStyle)),
+           rows: shRows, cols: shCols, colW: shColW.slice(),
+           merges: shMerges.map(m=>({...m})) };
+}
+function pushUndo(){ shUndo.push(snapshot()); if(shUndo.length>100) shUndo.shift(); shRedo.length=0; }
+function restore(s){
+  shData=s.data.map(r=>r.slice()); shStyle=JSON.parse(JSON.stringify(s.style));
+  shRows=s.rows; shCols=s.cols; shColW=s.colW.slice();
+  shMerges = (s.merges||[]).map(m=>({...m}));
+  buildHF(); 
+  selR=Math.min(selR,shRows-1); selC=Math.min(selC,shCols-1);
+  ancR=Math.min(ancR,shRows-1); ancC=Math.min(ancC,shCols-1);
+  renderSheet();
+}
+function shDoUndo(){ if(!shUndo.length){ msg(T('mNoUndo')); return; } shRedo.push(snapshot()); restore(shUndo.pop()); }
+function shDoRedo(){ if(!shRedo.length){ msg(T('mNoRedo')); return; } shUndo.push(snapshot()); restore(shRedo.pop()); }
+$('shUndoBtn').onclick = shDoUndo;
+$('shRedoBtn').onclick = shDoRedo;
+
+/* ── 셀 값 설정 ── */
+function setCellRaw(r,c,val){
   shData[r][c] = val;
-  try{ hf.setCellContents({sheet:0, row:r, col:c}, [[val==='' ? null : val]]); }catch(e){ buildHF(); }
+  try{ hf.setCellContents({sheet:0, row:r, col:c}, [[val===''?null:val]]); }catch(e){ buildHF(); }
+}
+function setCellValue(r,c,val){  /* 단일 셀 + 화면 갱신 (undo는 호출부에서) */
+  setCellRaw(r,c,val);
   recalcRender();
 }
 /* 화면만 다시 그림(수식 결과 갱신) — 선택/스타일 유지 */
 function recalcRender(){
+  const tb = $('sheetTable');
   for(let r=0;r<shRows;r++) for(let c=0;c<shCols;c++){
-    const td = $('sheetTable').querySelector(`td[data-r="${r}"][data-c="${c}"]`);
-    if(td) td.textContent = cellDisplay(r,c);
+    const td = tb.querySelector(`td[data-r="${r}"][data-c="${c}"]`);
+    if(td){ td.textContent = cellDisplay(r,c); td.style.cssText = cellStyleStr(r,c); }
+  }
+  paintSel();
+}
+/* 격자 확장 */
+function growTo(rows, cols){
+  let changed=false;
+  if(rows>shRows){ for(let i=shRows;i<rows;i++) shData.push(Array(shCols).fill('')); shRows=rows; changed=true; }
+  if(cols>shCols){ shData.forEach(r=>{ while(r.length<cols) r.push(''); }); for(let i=shColW.length;i<cols;i++) shColW.push(SH_DEFAULT_W); shCols=cols; changed=true; }
+  if(changed) buildHF();
+  return changed;
+}
+
+/* ── 수식 참조 이동 (채우기/붙여넣기용) ── */
+function shiftFormula(f, dr, dc){
+  return f.replace(/(\$?)([A-Z]{1,3})(\$?)(\d+)/g, (m, d1, col, d2, row, off, str)=>{
+    const prev = str[off-1];
+    if(prev && /[A-Za-z0-9_.$]/.test(prev)) return m;          /* 이름 일부 */
+    if(str[off+m.length] === '(') return m;                     /* 함수 이름 (예: LOG10) */
+    let c = colIdx(col), r = (+row)-1;
+    if(!d1) c += dc;
+    if(!d2) r += dr;
+    if(c<0 || r<0) return '#REF!';
+    return d1 + colName(c) + d2 + (r+1);
+  });
+}
+
+/* ── 마우스 선택 (드래그·Shift·머리글) ── */
+let shDragging=false, shFillDragging=false, shFillTarget=null, shRefDrag=null;
+const sheetTb = $('sheetTable');
+
+/* 수식 편집 중 셀 클릭 → 참조 삽입 */
+function refEditTarget(){
+  const fi = $('formulaInput');
+  if(document.activeElement===fi && fi.value.startsWith('=')) return {kind:'bar', el:fi};
+  const ed = sheetTb.querySelector('td.editing');
+  if(ed && ed.textContent.startsWith('=')) return {kind:'cell', el:ed};
+  return null;
+}
+function refEditText(t){ return t.kind==='bar' ? t.el.value : t.el.textContent; }
+function refEditSet(t, s){
+  if(t.kind==='bar'){ t.el.value=s; }
+  else{
+    t.el.textContent=s;
+    const rg=document.createRange(); rg.selectNodeContents(t.el); rg.collapse(false);
+    const sl=window.getSelection(); sl.removeAllRanges(); sl.addRange(rg);
   }
 }
-/* 셀 클릭/더블클릭/키보드 */
-$('sheetTable').addEventListener('click', e=>{
-  const td = e.target.closest('td'); if(!td) return;
-  selectCell(+td.dataset.r, +td.dataset.c);
+function tryInsertRef(t, r, c){
+  let s = refEditText(t);
+  const m = s.match(/(\$?[A-Z]{1,3}\$?\d+(:\$?[A-Z]{1,3}\$?\d+)?)$/);
+  if(m) s = s.slice(0, s.length-m[1].length);
+  else if(!/[=+\-*/^&%(,:<>]$/.test(s)) return false;
+  refEditSet(t, s + refOf(r,c));
+  shRefDrag = { t, base:s, r, c };
+  return true;
+}
+
+sheetTb.addEventListener('mousedown', e=>{
+  const td = e.target.closest('td');
+  if(td){
+    const r=+td.dataset.r, c=+td.dataset.c;
+    const t = refEditTarget();
+    if(t && !td.classList.contains('editing')){
+      if(tryInsertRef(t, r, c)){ e.preventDefault(); return; }
+    }
+    if(td.classList.contains('editing')) return;
+    shDragging = true;
+    setSel(r, c, e.shiftKey);
+    e.preventDefault();
+    $('sheetScroll').focus();
+    return;
+  }
+  const th = e.target.closest('th');
+  if(th){
+    if(th.dataset.hc!=null){  /* 열 머리글: 크기조절 or 열 선택 */
+      const rect = th.getBoundingClientRect();
+      if(rect.right - e.clientX < 6){ startColResize(+th.dataset.hc, e); e.preventDefault(); return; }
+      const c=+th.dataset.hc;
+      if(e.shiftKey){ selC=c; selR=shRows-1; ancR=0; }
+      else{ ancR=0; ancC=c; selR=shRows-1; selC=c; }
+      paintSel(); e.preventDefault(); $('sheetScroll').focus();
+    } else if(th.dataset.hr!=null){  /* 행 머리글 */
+      const r=+th.dataset.hr;
+      if(e.shiftKey){ selR=r; selC=shCols-1; ancC=0; }
+      else{ ancR=r; ancC=0; selR=r; selC=shCols-1; }
+      paintSel(); e.preventDefault(); $('sheetScroll').focus();
+    } else { /* 좌상단 모서리: 전체 선택 */
+      ancR=0; ancC=0; selR=shRows-1; selC=shCols-1; paintSel(); e.preventDefault(); $('sheetScroll').focus();
+    }
+  }
 });
-$('sheetTable').addEventListener('dblclick', e=>{
+sheetTb.addEventListener('mouseover', e=>{
+  const td = e.target.closest('td'); if(!td) return;
+  const r=+td.dataset.r, c=+td.dataset.c;
+  if(shRefDrag){
+    const {t, base, r:ar, c:ac} = shRefDrag;
+    refEditSet(t, base + rangeRef(Math.min(ar,r),Math.min(ac,c),Math.max(ar,r),Math.max(ac,c)));
+    return;
+  }
+  if(shFillDragging){ updateFillPreview(r,c); return; }
+  if(shDragging){ setSel(r, c, true); }
+});
+document.addEventListener('mouseup', ()=>{
+  shDragging=false; shRefDrag=null;
+  if(shFillDragging){ shFillDragging=false; applyFillDrag(); }
+});
+sheetTb.addEventListener('dblclick', e=>{
   const td = e.target.closest('td'); if(!td) return;
   startEdit(+td.dataset.r, +td.dataset.c);
 });
-function startEdit(r,c){
-  selectCell(r,c);
-  const td = $('sheetTable').querySelector(`td[data-r="${r}"][data-c="${c}"]`);
+/* 열 머리글 위 커서 표시 */
+sheetTb.addEventListener('mousemove', e=>{
+  const th = e.target.closest('th');
+  if(th && th.dataset.hc!=null){
+    const rect = th.getBoundingClientRect();
+    th.style.cursor = (rect.right - e.clientX < 6) ? 'col-resize' : '';
+  }
+});
+/* 열 너비 조절 */
+function startColResize(c, ev){
+  const startX = ev.clientX, startW = shColW[c]||SH_DEFAULT_W;
+  const col = sheetTb.querySelectorAll('colgroup col')[c+1];
+  const move = e=>{ const w = Math.max(36, startW + e.clientX - startX); shColW[c]=w; if(col) col.style.width=w+'px'; positionFillHandle(); };
+  const up = ()=>{ document.removeEventListener('mousemove',move); document.removeEventListener('mouseup',up); };
+  document.addEventListener('mousemove',move); document.addEventListener('mouseup',up);
+}
+
+/* ── 채우기 핸들 (자동 채우기) ── */
+$('shFillHandle').addEventListener('mousedown', e=>{
+  e.preventDefault(); e.stopPropagation();
+  shFillDragging = true; shFillTarget = null;
+});
+function updateFillPreview(r,c){
+  sheetTb.querySelectorAll('td.fsel').forEach(td=>td.classList.remove('fsel'));
+  const {r1,c1,r2,c2} = selRange();
+  let tgt=null;
+  if(r>r2 && (r-r2) >= Math.max(0,c-c2)) tgt={dir:'down', r1:r2+1, c1, r2:r, c2};
+  else if(c>c2) tgt={dir:'right', r1, c1:c2+1, r2, c2:c};
+  shFillTarget = tgt;
+  if(!tgt) return;
+  for(let rr=tgt.r1; rr<=tgt.r2; rr++) for(let cc=tgt.c1; cc<=tgt.c2; cc++){
+    const td=sheetTb.querySelector(`td[data-r="${rr}"][data-c="${cc}"]`); if(td) td.classList.add('fsel');
+  }
+}
+function seriesNext(vals, k){
+  /* vals: 원본 숫자 배열(2개 이상, 등차) → k번째 다음 항 */
+  const step = vals.length>1 ? (vals[vals.length-1]-vals[0])/(vals.length-1) : 0;
+  return vals[vals.length-1] + step*(k+1);
+}
+function fillCells(srcR1,srcC1,srcR2,srcC2, dir, count){
+  /* dir 'down': 아래로 count행 채움 / 'right': 오른쪽으로 count열 */
+  if(dir==='down'){
+    for(let c=srcC1;c<=srcC2;c++){
+      const vals=[]; let allNum=true;
+      for(let r=srcR1;r<=srcR2;r++){ const raw=shData[r][c]; const n=toNum(raw); if(typeof raw==='string'&&raw[0]==='=') { allNum=false; break;} if(n==null&&raw!==''&&raw!=null){allNum=false;} vals.push(n); }
+      const numeric = allNum && vals.length>1 && vals.every(v=>v!=null);
+      for(let k=0;k<count;k++){
+        const srcR = srcR1 + (k % (srcR2-srcR1+1));
+        const tgtR = srcR2+1+k;
+        const raw = shData[srcR][c];
+        let out;
+        if(typeof raw==='string' && raw[0]==='=') out = shiftFormula(raw, tgtR-srcR, 0);
+        else if(numeric) out = String(seriesNext(vals, k));
+        else out = raw;
+        setCellRaw(tgtR, c, out);
+        if(shStyle[cellKey(srcR,c)]) shStyle[cellKey(tgtR,c)] = {...shStyle[cellKey(srcR,c)]};
+      }
+    }
+  } else {
+    for(let r=srcR1;r<=srcR2;r++){
+      const vals=[]; let allNum=true;
+      for(let c=srcC1;c<=srcC2;c++){ const raw=shData[r][c]; const n=toNum(raw); if(typeof raw==='string'&&raw[0]==='='){allNum=false;break;} if(n==null&&raw!==''&&raw!=null){allNum=false;} vals.push(n); }
+      const numeric = allNum && vals.length>1 && vals.every(v=>v!=null);
+      for(let k=0;k<count;k++){
+        const srcC = srcC1 + (k % (srcC2-srcC1+1));
+        const tgtC = srcC2+1+k;
+        const raw = shData[r][srcC];
+        let out;
+        if(typeof raw==='string' && raw[0]==='=') out = shiftFormula(raw, 0, tgtC-srcC);
+        else if(numeric) out = String(seriesNext(vals, k));
+        else out = raw;
+        setCellRaw(r, tgtC, out);
+        if(shStyle[cellKey(r,srcC)]) shStyle[cellKey(r,tgtC)] = {...shStyle[cellKey(r,srcC)]};
+      }
+    }
+  }
+}
+function applyFillDrag(){
+  sheetTb.querySelectorAll('td.fsel').forEach(td=>td.classList.remove('fsel'));
+  const t = shFillTarget; shFillTarget=null;
+  if(!t) return;
+  const {r1,c1,r2,c2} = selRange();
+  pushUndo();
+  if(t.dir==='down') fillCells(r1,c1,r2,c2,'down', t.r2-r2);
+  else fillCells(r1,c1,r2,c2,'right', t.c2-c2);
+  ancR=r1; ancC=c1; selR=t.r2; selC=t.c2;
+  renderSheet();
+}
+/* Ctrl+D / Ctrl+R: 선택 범위 안에서 첫 행/열을 아래·오른쪽으로 채움 */
+function fillDownSel(){
+  const {r1,c1,r2,c2} = selRange(); if(r2===r1) return;
+  pushUndo(); fillCells(r1,c1,r1,c2,'down', r2-r1); renderSheet();
+}
+function fillRightSel(){
+  const {r1,c1,r2,c2} = selRange(); if(c2===c1) return;
+  pushUndo(); fillCells(r1,c1,r2,c1,'right', c2-c1); renderSheet();
+}
+
+/* ── 편집 ── */
+function startEdit(r,c,initChar){
+  setSel(r,c,false);
+  const td = sheetTb.querySelector(`td[data-r="${r}"][data-c="${c}"]`);
   if(!td) return;
   td.classList.add('editing');
   const raw = shData[r][c]; const orig = (raw==null)?'':String(raw);
-  td.textContent = orig;
+  td.textContent = (initChar!=null) ? initChar : orig;
+  td.style.textAlign='left';
   td.contentEditable = 'true'; td.focus();
-  /* 커서 끝으로 */
   const range=document.createRange(); range.selectNodeContents(td); range.collapse(false);
   const sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
-  const finish = (commit, move)=>{
+  const finish = (commit, mr, mc)=>{
     td.contentEditable='false'; td.classList.remove('editing');
-    if(commit) setCellValue(r,c, td.textContent);
-    else td.textContent = cellDisplay(r,c);
     td.onblur=td.onkeydown=null;
-    if(move){ selectCell(Math.min(r+1,shRows-1), c); }
-    else selectCell(r,c);
+    if(commit){
+      const v = td.textContent;
+      if(v !== orig){ pushUndo(); setCellValue(r,c,v); }
+      else recalcRender();
+    } else recalcRender();
+    setSel(Math.max(0,Math.min(shRows-1,r+mr)), Math.max(0,Math.min(shCols-1,c+mc)), false);
     $('sheetScroll').focus();
   };
   td.onkeydown = ev=>{
-    if(ev.key==='Enter'){ ev.preventDefault(); finish(true,true); }
-    else if(ev.key==='Escape'){ ev.preventDefault(); finish(false,false); }
-    else if(ev.key==='Tab'){ ev.preventDefault(); td.contentEditable='false'; td.classList.remove('editing'); setCellValue(r,c,td.textContent); td.onblur=td.onkeydown=null; selectCell(r, Math.min(c+1,shCols-1)); $('sheetScroll').focus(); }
+    if(ev.key==='Enter'){ ev.preventDefault(); finish(true, ev.shiftKey?-1:1, 0); }
+    else if(ev.key==='Escape'){ ev.preventDefault(); finish(false,0,0); }
+    else if(ev.key==='Tab'){ ev.preventDefault(); finish(true, 0, ev.shiftKey?-1:1); }
   };
-  td.onblur = ()=> finish(true,false);
+  td.onblur = ()=>{ if(shRefDrag) return; finish(true,0,0); };
 }
-/* 격자 키보드 네비게이션 */
+
+/* ── Ctrl+화살표: 데이터 끝으로 이동 ── */
+function jumpEdge(dr,dc){
+  const has = (r,c)=> r>=0&&c>=0&&r<shRows&&c<shCols && shData[r][c]!=='' && shData[r][c]!=null;
+  let r=selR, c=selC;
+  if(has(r,c) && has(r+dr,c+dc)){ while(has(r+dr,c+dc)){ r+=dr; c+=dc; } }
+  else{
+    r+=dr; c+=dc;
+    while(r>=0&&c>=0&&r<shRows&&c<shCols && !has(r,c)){ r+=dr; c+=dc; }
+    if(r<0||c<0||r>=shRows||c>=shCols){ r=Math.max(0,Math.min(shRows-1, dr>0?shRows-1:(dr<0?0:selR))); c=Math.max(0,Math.min(shCols-1, dc>0?shCols-1:(dc<0?0:selC))); }
+  }
+  return [r,c];
+}
+
+/* ── 키보드 ── */
 $('sheetScroll').tabIndex = 0;
 $('sheetScroll').addEventListener('keydown', e=>{
-  if($('sheetTable').querySelector('td.editing')) return;
-  if(e.key==='ArrowUp'){ e.preventDefault(); selectCell(selR-1,selC); }
-  else if(e.key==='ArrowDown'||e.key==='Enter'){ e.preventDefault(); selectCell(selR+1,selC); }
-  else if(e.key==='ArrowLeft'){ e.preventDefault(); selectCell(selR,selC-1); }
-  else if(e.key==='ArrowRight'||e.key==='Tab'){ e.preventDefault(); selectCell(selR,selC+1); }
-  else if(e.key==='Delete'||e.key==='Backspace'){ e.preventDefault(); setCellValue(selR,selC,''); }
+  if(sheetTb.querySelector('td.editing')) return;
+  const ctrl = e.ctrlKey || e.metaKey;
+  const mv = (dr,dc)=>{
+    e.preventDefault();
+    if(ctrl){ const [r,c]=jumpEdge(dr,dc); setSel(r,c,e.shiftKey); return; }
+    const mg = mergeAt(selR,selC);
+    let r=selR, c=selC;
+    if(mg){ if(dr>0) r=mg.r+mg.rs-1; if(dc>0) c=mg.c+mg.cs-1; }
+    setSel(r+dr, c+dc, e.shiftKey);
+  };
+  if(e.key==='ArrowUp') mv(-1,0);
+  else if(e.key==='ArrowDown') mv(1,0);
+  else if(e.key==='ArrowLeft') mv(0,-1);
+  else if(e.key==='ArrowRight') mv(0,1);
+  else if(e.key==='Enter'){ e.preventDefault(); setSel(selR+(e.shiftKey?-1:1), selC, false); }
+  else if(e.key==='Tab'){ e.preventDefault(); setSel(selR, selC+(e.shiftKey?-1:1), false); }
+  else if(e.key==='Home'){ e.preventDefault(); ctrl ? setSel(0,0,e.shiftKey) : setSel(selR,0,e.shiftKey); }
+  else if(e.key==='End' && ctrl){ e.preventDefault(); let mr=0,mc=0; for(let r=0;r<shRows;r++)for(let c=0;c<shCols;c++) if(shData[r][c]!==''&&shData[r][c]!=null){mr=Math.max(mr,r);mc=Math.max(mc,c);} setSel(mr,mc,e.shiftKey); }
+  else if(e.key==='Delete'||e.key==='Backspace'){ e.preventDefault(); clearRange(); }
   else if(e.key==='F2'){ e.preventDefault(); startEdit(selR,selC); }
-  else if(e.key.length===1 && !e.ctrlKey && !e.metaKey){ startEdit(selR,selC); }
+  else if(ctrl && (e.key==='z'||e.key==='Z')){ e.preventDefault(); e.shiftKey?shDoRedo():shDoUndo(); }
+  else if(ctrl && (e.key==='y'||e.key==='Y')){ e.preventDefault(); shDoRedo(); }
+  else if(ctrl && (e.key==='a'||e.key==='A')){ e.preventDefault(); ancR=0;ancC=0;selR=shRows-1;selC=shCols-1;paintSel(); }
+  else if(ctrl && (e.key==='d'||e.key==='D')){ e.preventDefault(); fillDownSel(); }
+  else if(ctrl && (e.key==='r'||e.key==='R')){ e.preventDefault(); fillRightSel(); }
+  else if(ctrl && (e.key==='f'||e.key==='F')){ e.preventDefault(); openFind(false); }
+  else if(ctrl && (e.key==='h'||e.key==='H')){ e.preventDefault(); openFind(true); }
+  else if(ctrl && (e.key==='b'||e.key==='B')){ e.preventDefault(); applyStyle('bold'); }
+  else if(ctrl && (e.key==='i'||e.key==='I')){ e.preventDefault(); applyStyle('italic'); }
+  else if(ctrl && (e.key==='u'||e.key==='U')){ e.preventDefault(); applyStyle('under'); }
+  else if(!ctrl && e.key.length===1){ e.preventDefault(); startEdit(selR,selC,e.key); }
 });
-/* 수식 입력줄 */
-$('formulaInput').addEventListener('keydown', e=>{
-  if(e.key==='Enter'){ e.preventDefault(); setCellValue(selR,selC,$('formulaInput').value); selectCell(Math.min(selR+1,shRows-1),selC); $('sheetScroll').focus(); }
-});
-$('formulaInput').addEventListener('blur', ()=>{ setCellValue(selR,selC,$('formulaInput').value); });
+function clearRange(){
+  const {r1,c1,r2,c2} = selRange();
+  pushUndo();
+  for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++) setCellRaw(r,c,'');
+  recalcRender();
+}
 
-/* 행/열 추가 */
-$('shAddRow').onclick = ()=>{ shData.push(Array(shCols).fill('')); shRows++; buildHF(); renderSheet(); };
-$('shAddCol').onclick = ()=>{ shData.forEach(r=>r.push('')); shCols++; buildHF(); renderSheet(); };
-/* 새 표 */
+/* ── 복사/잘라내기/붙여넣기 (엑셀과 호환: 탭 구분 텍스트) ── */
+function rangeTSV(r1,c1,r2,c2){
+  const rows=[];
+  for(let r=r1;r<=r2;r++){
+    const row=[];
+    for(let c=c1;c<=c2;c++){ const v=cellValue(r,c); row.push(v==null?'':String(v)); }
+    rows.push(row.join('\t'));
+  }
+  return rows.join('\n');
+}
+function doCopy(e, cut){
+  const {r1,c1,r2,c2} = selRange();
+  const tsv = rangeTSV(r1,c1,r2,c2);
+  const styles={};
+  for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++){ const st=shStyle[cellKey(r,c)]; if(st) styles[(r-r1)+','+(c-c1)]={...st}; }
+  shClip = { mode: cut?'cut':'copy', r1,c1,r2,c2, tsv, styles };
+  if(e && e.clipboardData){ e.clipboardData.setData('text/plain', tsv); e.preventDefault(); }
+  else if(navigator.clipboard) navigator.clipboard.writeText(tsv).catch(()=>{});
+  msg(cut?T('mCut'):T('mCopied'));
+}
+function doPasteText(text){
+  const rows = text.replace(/\r\n?/g,'\n').replace(/\n$/,'').split('\n').map(r=>r.split('\t'));
+  const nR=rows.length, nC=Math.max(...rows.map(r=>r.length));
+  pushUndo();
+  growTo(selR+nR, selC+nC);
+  const internal = shClip && shClip.tsv===text;
+  if(internal){
+    const {r1,c1,r2,c2,mode,styles} = shClip;
+    const dr=selR-r1, dc=selC-c1;
+    /* 잘라내기: 원본 지움 (겹치는 경우 먼저 원본을 백업) */
+    const src=[];
+    for(let r=r1;r<=r2;r++){ const row=[]; for(let c=c1;c<=c2;c++) row.push(shData[r][c]); src.push(row); }
+    if(mode==='cut'){
+      for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++){ setCellRaw(r,c,''); delete shStyle[cellKey(r,c)]; }
+    }
+    for(let r=0;r<src.length;r++) for(let c=0;c<src[r].length;c++){
+      let v=src[r][c];
+      if(mode==='copy' && typeof v==='string' && v[0]==='=') v = shiftFormula(v, dr, dc);
+      setCellRaw(r1+dr+r, c1+dc+c, v==null?'':v);
+      const st = styles[r+','+c];
+      if(st) shStyle[cellKey(r1+dr+r, c1+dc+c)] = {...st};
+      else delete shStyle[cellKey(r1+dr+r, c1+dc+c)];
+    }
+    if(mode==='cut') shClip=null;
+    ancR=selR; ancC=selC; selR=selR+src.length-1; selC=selC+src[0].length-1;
+  } else {
+    for(let r=0;r<nR;r++) for(let c=0;c<rows[r].length;c++) setCellRaw(selR+r, selC+c, rows[r][c]);
+    ancR=selR; ancC=selC; selR=selR+nR-1; selC=selC+nC-1;
+  }
+  renderSheet();
+  msg(T('mPasted'));
+}
+document.addEventListener('copy', e=>{
+  if(!sheetActive() || sheetTb.querySelector('td.editing') || document.activeElement===$('formulaInput')) return;
+  if(!$('sheetScroll').contains(document.activeElement) && document.activeElement!==document.body) return;
+  doCopy(e,false);
+});
+document.addEventListener('cut', e=>{
+  if(!sheetActive() || sheetTb.querySelector('td.editing') || document.activeElement===$('formulaInput')) return;
+  if(!$('sheetScroll').contains(document.activeElement) && document.activeElement!==document.body) return;
+  doCopy(e,true);
+});
+document.addEventListener('paste', e=>{
+  if(!sheetActive() || sheetTb.querySelector('td.editing') || document.activeElement===$('formulaInput')) return;
+  if(!$('sheetScroll').contains(document.activeElement) && document.activeElement!==document.body) return;
+  const text = e.clipboardData ? e.clipboardData.getData('text/plain') : '';
+  if(text){ e.preventDefault(); doPasteText(text); }
+});
+
+/* ── 수식 입력줄 ── */
+$('formulaInput').addEventListener('keydown', e=>{
+  if(e.key==='Enter'){
+    e.preventDefault();
+    pushUndo(); setCellValue(selR,selC,$('formulaInput').value);
+    setSel(Math.min(selR+1,shRows-1),selC,false); $('sheetScroll').focus();
+  } else if(e.key==='Escape'){ e.preventDefault(); paintSel(); $('sheetScroll').focus(); }
+});
+$('formulaInput').addEventListener('blur', ()=>{
+  if(shRefDrag) return;
+  const v=$('formulaInput').value;
+  if(String(shData[selR][selC]??'')!==v){ pushUndo(); setCellValue(selR,selC,v); }
+});
+
+/* ── 찾기/바꾸기 (Ctrl+F / Ctrl+H) ── */
+function openFind(focusRep){
+  const d = $('dlgFind');
+  if(!d.open) d.show();     /* 비모달: 표를 계속 보면서 사용 */
+  (focusRep ? $('fRepTxt') : $('fFindTxt')).focus();
+  ($('fFindTxt')).select();
+}
+$('shFind').onclick = ()=> openFind(false);
+$('fClose').onclick = ()=> $('dlgFind').close();
+function cellMatches(r,c,q){
+  const raw = String(shData[r][c] ?? '');
+  const disp = cellDisplay(r,c);
+  return raw.toLowerCase().includes(q) || disp.toLowerCase().includes(q);
+}
+function findNext(){
+  const q = $('fFindTxt').value.toLowerCase();
+  if(!q){ msg(T('mFindEmpty')); return false; }
+  const total = shRows*shCols;
+  const startIdx = selR*shCols + selC;
+  for(let k=1;k<=total;k++){
+    const idx = (startIdx + k) % total;
+    const r = Math.floor(idx/shCols), c = idx%shCols;
+    if(mergeAt(r,c) && mergeAt(r,c).r!==r) continue;   /* 병합 덮인 셀 건너뜀 */
+    if(cellMatches(r,c,q)){ setSel(r,c,false); return true; }
+  }
+  msg(T('mFindNone'));
+  return false;
+}
+$('fNext').onclick = findNext;
+$('fFindTxt').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); findNext(); } });
+$('fRepTxt').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); $('fRepOne').onclick(); } });
+$('fRepOne').onclick = ()=>{
+  const q = $('fFindTxt').value; if(!q){ msg(T('mFindEmpty')); return; }
+  const rep = $('fRepTxt').value;
+  const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'gi');
+  if(cellMatches(selR,selC,q.toLowerCase())){
+    pushUndo();
+    setCellValue(selR, selC, String(shData[selR][selC] ?? '').replace(re, rep));
+  }
+  findNext();
+};
+$('fRepAll').onclick = ()=>{
+  const q = $('fFindTxt').value; if(!q){ msg(T('mFindEmpty')); return; }
+  const rep = $('fRepTxt').value;
+  const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'gi');
+  let n=0;
+  pushUndo();
+  for(let r=0;r<shRows;r++) for(let c=0;c<shCols;c++){
+    const raw = String(shData[r][c] ?? '');
+    if(raw && re.test(raw)){ re.lastIndex=0; setCellRaw(r,c, raw.replace(re, rep)); n++; }
+    re.lastIndex=0;
+  }
+  if(!n) shUndo.pop();
+  recalcRender();
+  msg(T('mRepDone').replace('{n}', n));
+};
+
+/* ── Σ 자동 합계 ── */
+$('shAutoSum').onclick = ()=>{
+  const {r1,c1,r2,c2} = selRange();
+  const hasNum = (r,c)=> toNum(cellValue(r,c))!=null;
+  pushUndo();
+  if(r1===r2 && c1===c2){
+    let rs=r1-1; while(rs>=0 && hasNum(rs,c1)) rs--;
+    if(rs < r1-1){ setCellRaw(r1,c1,`=SUM(${rangeRef(rs+1,c1,r1-1,c1)})`); }
+    else{
+      let cs=c1-1; while(cs>=0 && hasNum(r1,cs)) cs--;
+      if(cs < c1-1) setCellRaw(r1,c1,`=SUM(${rangeRef(r1,cs+1,r1,c1-1)})`);
+      else { shUndo.pop(); msg(T('mNoNums')); return; }
+    }
+    renderSheet(); setSel(r1,c1,false);
+  } else if(r1===r2){
+    growTo(shRows, c2+2);
+    setCellRaw(r1, c2+1, `=SUM(${rangeRef(r1,c1,r1,c2)})`);
+    renderSheet(); setSel(r1,c2+1,false);
+  } else {
+    growTo(r2+2, shCols);
+    for(let c=c1;c<=c2;c++){
+      let any=false; for(let r=r1;r<=r2;r++) if(hasNum(r,c)){ any=true; break; }
+      if(any) setCellRaw(r2+1, c, `=SUM(${rangeRef(r1,c,r2,c)})`);
+    }
+    renderSheet(); setSel(r2+1,c1,false);
+  }
+  msg(T('mAutoSum'));
+};
+
+/* ── 행/열 추가·삽입·삭제 ── */
+$('shAddRow').onclick = ()=>{ pushUndo(); shData.push(Array(shCols).fill('')); shRows++; buildHF(); renderSheet(); };
+$('shAddCol').onclick = ()=>{ pushUndo(); shData.forEach(r=>r.push('')); shColW.push(SH_DEFAULT_W); shCols++; buildHF(); renderSheet(); };
+function remapStyles(fn){
+  const out={};
+  for(const k in shStyle){
+    const [r,c]=k.split(',').map(Number);
+    const m=fn(r,c);
+    if(m) out[m[0]+','+m[1]]=shStyle[k];
+  }
+  shStyle=out;
+}
+function adjustRefsInsertRow(at,n){ mapAllFormulas((r,cRow)=> null, f=> f.replace(/(\$?)([A-Z]{1,3})(\$?)(\d+)/g,(m,d1,col,d2,row,off,str)=>{ const prev=str[off-1]; if(prev&&/[A-Za-z0-9_.$]/.test(prev))return m; if(str[off+m.length]==='(')return m; const rr=(+row)-1; return rr>=at? d1+col+d2+(rr+1+n):m; })); }
+function adjustRefsDeleteRow(at,n){ mapAllFormulas(null, f=> f.replace(/(\$?)([A-Z]{1,3})(\$?)(\d+)/g,(m,d1,col,d2,row,off,str)=>{ const prev=str[off-1]; if(prev&&/[A-Za-z0-9_.$]/.test(prev))return m; if(str[off+m.length]==='(')return m; const rr=(+row)-1; if(rr>=at&&rr<at+n)return '#REF!'; return rr>=at+n? d1+col+d2+(rr+1-n):m; })); }
+function adjustRefsInsertCol(at,n){ mapAllFormulas(null, f=> f.replace(/(\$?)([A-Z]{1,3})(\$?)(\d+)/g,(m,d1,col,d2,row,off,str)=>{ const prev=str[off-1]; if(prev&&/[A-Za-z0-9_.$]/.test(prev))return m; if(str[off+m.length]==='(')return m; const cc=colIdx(col); return cc>=at? d1+colName(cc+n)+d2+row:m; })); }
+function adjustRefsDeleteCol(at,n){ mapAllFormulas(null, f=> f.replace(/(\$?)([A-Z]{1,3})(\$?)(\d+)/g,(m,d1,col,d2,row,off,str)=>{ const prev=str[off-1]; if(prev&&/[A-Za-z0-9_.$]/.test(prev))return m; if(str[off+m.length]==='(')return m; const cc=colIdx(col); if(cc>=at&&cc<at+n)return '#REF!'; return cc>=at+n? d1+colName(cc-n)+d2+row:m; })); }
+function mapAllFormulas(_, fn){
+  for(let r=0;r<shRows;r++) for(let c=0;c<shCols;c++){
+    const v=shData[r][c];
+    if(typeof v==='string' && v[0]==='=') shData[r][c]=fn(v);
+  }
+}
+$('shInsRow').onclick = ()=>{
+  const {r1,r2} = selRange(); const n=r2-r1+1;
+  pushUndo();
+  adjustRefsInsertRow(r1,n);
+  shiftMergesRow(r1, n);
+  for(let i=0;i<n;i++) shData.splice(r1,0,Array(shCols).fill(''));
+  shRows+=n;
+  remapStyles((r,c)=> [r>=r1? r+n : r, c]);
+  buildHF(); renderSheet(); setSel(r1,selC,false); msg(T('mRowIns'));
+};
+$('shDelRow').onclick = ()=>{
+  const {r1,r2} = selRange(); const n=Math.min(r2-r1+1, shRows-1);
+  if(shRows-n<1) return;
+  pushUndo();
+  adjustRefsDeleteRow(r1,n);
+  shiftMergesRow(r1, -n);
+  shData.splice(r1,n); shRows-=n;
+  remapStyles((r,c)=> r>=r1&&r<r1+n ? null : [r>=r1+n? r-n : r, c]);
+  buildHF(); renderSheet(); setSel(Math.min(r1,shRows-1),selC,false); msg(T('mRowDel'));
+};
+$('shInsCol').onclick = ()=>{
+  const {c1,c2} = selRange(); const n=c2-c1+1;
+  pushUndo();
+  adjustRefsInsertCol(c1,n);
+  shiftMergesCol(c1, n);
+  shData.forEach(r=>{ for(let i=0;i<n;i++) r.splice(c1,0,''); });
+  for(let i=0;i<n;i++) shColW.splice(c1,0,SH_DEFAULT_W);
+  shCols+=n;
+  remapStyles((r,c)=> [r, c>=c1? c+n : c]);
+  buildHF(); renderSheet(); setSel(selR,c1,false); msg(T('mColIns'));
+};
+$('shDelCol').onclick = ()=>{
+  const {c1,c2} = selRange(); const n=Math.min(c2-c1+1, shCols-1);
+  if(shCols-n<1) return;
+  pushUndo();
+  adjustRefsDeleteCol(c1,n);
+  shiftMergesCol(c1, -n);
+  shData.forEach(r=>r.splice(c1,n)); shColW.splice(c1,n); shCols-=n;
+  remapStyles((r,c)=> c>=c1&&c<c1+n ? null : [r, c>=c1+n? c-n : c]);
+  buildHF(); renderSheet(); setSel(selR,Math.min(c1,shCols-1),false); msg(T('mColDel'));
+};
+
+/* ── 새 표 ── */
 $('shNew').onclick = async ()=>{
   if(shData && shData.some(r=>r.some(c=>c!=='' && c!=null))){
     if(!await askConfirm(T('cfNewSheet'))) return;
   }
   shRows=30; shCols=12; shData=Array.from({length:shRows},()=>Array(shCols).fill('')); shStyle={};
-  buildHF(); selR=0; selC=0; renderSheet(); msg(T('mNewSheet'));
+  shColW = Array(shCols).fill(SH_DEFAULT_W);
+  shUndo=[]; shRedo=[]; shClip=null; shMerges=[];
+  buildHF(); selR=0; selC=0; ancR=0; ancC=0; renderSheet(); msg(T('mNewSheet'));
 };
-/* 스타일: 굵게/색/배경 */
+
+/* ── 셀 병합/해제 ── */
+$('shMerge').onclick = async ()=>{
+  const {r1,c1,r2,c2} = selRange();
+  /* 선택이 기존 병합과 정확히 일치하면 → 해제 */
+  const exact = shMerges.findIndex(m=> m.r===r1 && m.c===c1 && m.r+m.rs-1===r2 && m.c+m.cs-1===c2);
+  if(exact>=0){ pushUndo(); shMerges.splice(exact,1); renderSheet(); msg(T('mUnmerged')); return; }
+  if(r1===r2 && c1===c2){ msg(T('mMergeNeed')); return; }
+  /* 값이 여러 개면 왼쪽 위 값만 남는다고 알림 */
+  let vals=0;
+  for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++)
+    if(shData[r][c]!=='' && shData[r][c]!=null) vals++;
+  if(vals>1 && !await askConfirm(T('cfMerge'))) return;
+  pushUndo();
+  /* 겹치는 기존 병합 제거 */
+  shMerges = shMerges.filter(m=> m.r+m.rs-1<r1 || m.r>r2 || m.c+m.cs-1<c1 || m.c>c2);
+  /* 왼쪽 위 값만 유지 */
+  for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++)
+    if(r!==r1 || c!==c1) setCellRaw(r,c,'');
+  shMerges.push({r:r1, c:c1, rs:r2-r1+1, cs:c2-c1+1});
+  ancR=r1; ancC=c1; selR=r1; selC=c1;
+  renderSheet(); msg(T('mMerged'));
+};
+/* 행·열 삽입/삭제 시 병합 이동 (걸친 병합은 해제) */
+function shiftMergesRow(at, n){  /* n>0 삽입, n<0 삭제 */
+  const del1=at, del2=at+Math.abs(n)-1;
+  shMerges = shMerges.filter(m=>{
+    if(n<0 && !(m.r+m.rs-1<del1 || m.r>del2)) return false;      /* 삭제 범위와 겹침 → 해제 */
+    if(n>0 && at>m.r && at<=m.r+m.rs-1) return false;            /* 병합 중간에 삽입 → 해제 */
+    return true;
+  });
+  shMerges.forEach(m=>{ if(m.r>=at) m.r += n; });
+}
+function shiftMergesCol(at, n){
+  const del1=at, del2=at+Math.abs(n)-1;
+  shMerges = shMerges.filter(m=>{
+    if(n<0 && !(m.c+m.cs-1<del1 || m.c>del2)) return false;
+    if(n>0 && at>m.c && at<=m.c+m.cs-1) return false;
+    return true;
+  });
+  shMerges.forEach(m=>{ if(m.c>=at) m.c += n; });
+}
+
+/* ── 스타일: 선택 범위 전체에 적용 ── */
 function applyStyle(prop, val){
-  const key = selR+','+selC;
-  shStyle[key] = shStyle[key] || {};
-  if(prop==='bold') shStyle[key].bold = !shStyle[key].bold;
-  else shStyle[key][prop] = val;
-  renderSheet(); selectCell(selR,selC);
+  const {r1,c1,r2,c2} = selRange();
+  pushUndo();
+  /* 토글류는 활성 셀 상태 기준으로 범위 전체 on/off */
+  const actSt = shStyle[cellKey(selR,selC)] || {};
+  const toggleTo = !actSt[prop];
+  for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++){
+    const k=cellKey(r,c);
+    shStyle[k] = shStyle[k] || {};
+    if(prop==='bold'||prop==='italic'||prop==='under') shStyle[k][prop] = toggleTo;
+    else shStyle[k][prop] = val;
+  }
+  recalcRender();
 }
 $('shBold').onclick = ()=> applyStyle('bold');
-$('shColor').oninput = e=> applyStyle('color', e.target.value);
-$('shFill').onclick = ()=> applyStyle('bg', $('shBg').value);
-/* 정렬 (선택한 열 기준, 1행은 머리글로 보고 제외 옵션 없이 전체 정렬) */
+$('shItalic').onclick = ()=> applyStyle('italic');
+$('shUnder').onclick = ()=> applyStyle('under');
+/* 색상은 고르는 즉시 적용 (드래그로 여러 번 바뀌어도 undo는 한 번만) */
+let shColorSession = false;
+function applyColorLive(prop, val){
+  const {r1,c1,r2,c2} = selRange();
+  if(!shColorSession){ pushUndo(); shColorSession = true; }
+  for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++){
+    const k=cellKey(r,c); shStyle[k]=shStyle[k]||{}; shStyle[k][prop]=val;
+  }
+  recalcRender();
+}
+$('shColor').addEventListener('input', e=> applyColorLive('color', e.target.value));
+$('shColor').addEventListener('change', ()=>{ shColorSession=false; });
+$('shBg').addEventListener('input', e=> applyColorLive('bg', e.target.value));
+$('shBg').addEventListener('change', ()=>{ shColorSession=false; });
+$('shAlignL').onclick = ()=> applyStyle('align','left');
+$('shAlignC').onclick = ()=> applyStyle('align','center');
+$('shAlignR').onclick = ()=> applyStyle('align','right');
+/* 숫자 형식 */
+function applyNumFmt(fn){
+  const {r1,c1,r2,c2} = selRange();
+  pushUndo();
+  for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++){
+    const k=cellKey(r,c); shStyle[k]=shStyle[k]||{}; fn(shStyle[k]);
+  }
+  recalcRender();
+}
+$('shComma').onclick = ()=>{ const on = !(shStyle[cellKey(selR,selC)]||{}).comma; applyNumFmt(st=>{ st.comma=on; if(on && st.dec==null) st.dec=0; }); };
+$('shPct').onclick = ()=>{ const on = !(shStyle[cellKey(selR,selC)]||{}).pct; applyNumFmt(st=>{ st.pct=on; }); };
+$('shDecInc').onclick = ()=> applyNumFmt(st=>{ st.dec = (st.dec==null?0:st.dec)+1; });
+$('shDecDec').onclick = ()=> applyNumFmt(st=>{ st.dec = Math.max(0,(st.dec==null?1:st.dec)-1); if(st.dec===0&&!st.comma&&!st.pct) st.dec=0; });
+
+/* ── 정렬 (선택한 열 기준, 머리글로 보이면 1행 고정) ── */
+function usedRange(){
+  let mr=-1, mc=-1;
+  for(let r=0;r<shRows;r++) for(let c=0;c<shCols;c++)
+    if(shData[r][c]!=='' && shData[r][c]!=null){ mr=Math.max(mr,r); mc=Math.max(mc,c); }
+  return mr<0 ? null : {r1:0,c1:0,r2:mr,c2:mc};
+}
 function sortByCol(asc){
+  const u = usedRange(); if(!u){ msg(T('mSheetEmpty')); return; }
+  if(shMerges.length){ msg(T('mSortMerged')); return; }
   const c = selC;
-  const rows = shData.map(r=>r.slice());
-  rows.sort((a,b)=>{
-    let x=a[c], y=b[c];
-    const nx=parseFloat(x), ny=parseFloat(y);
-    const bothNum = !isNaN(nx)&&!isNaN(ny)&&String(x).trim()!==''&&String(y).trim()!=='';
+  /* 1행이 문자이고 아래에 숫자가 있으면 머리글로 간주 */
+  let start = 0;
+  const h = shData[0][c];
+  if(h!=='' && h!=null && toNum(h)==null){
+    for(let r=1;r<=u.r2;r++){ if(toNum(cellValue(r,c))!=null){ start=1; break; } }
+  }
+  pushUndo();
+  const idx = [];
+  for(let r=start;r<=u.r2;r++) idx.push(r);
+  idx.sort((a,b)=>{
+    const x=cellValue(a,c), y=cellValue(b,c);
+    const ex=(x===''||x==null), ey=(y===''||y==null);
+    if(ex&&ey) return 0;
+    if(ex) return 1;              /* 빈 셀은 항상 마지막 */
+    if(ey) return -1;
+    const nx=toNum(x), ny=toNum(y);
     let cmp;
-    if(bothNum) cmp = nx-ny;
+    if(nx!=null && ny!=null) cmp = nx-ny;
     else cmp = String(x).localeCompare(String(y));
     return asc?cmp:-cmp;
   });
-  shData = rows; buildHF(); renderSheet();
+  const newData = shData.map(r=>r.slice());
+  const rowMap = {};
+  idx.forEach((srcR,i)=>{ newData[start+i]=shData[srcR].slice(); rowMap[srcR]=start+i; });
+  shData = newData;
+  remapStyles((r,cc)=> [rowMap[r]!=null? rowMap[r] : r, cc]);
+  buildHF(); renderSheet();
   msg(asc?T('mSortedAsc'):T('mSortedDesc'));
 }
 $('shSortAsc').onclick = ()=> sortByCol(true);
 $('shSortDesc').onclick = ()=> sortByCol(false);
 
-/* 엑셀/CSV 열기 → 스프레드시트로 */
+/* ── 피벗 테이블 ── */
+$('shPivot').onclick = ()=>{
+  const u = usedRange();
+  if(!u || u.r2 < 1){ msg(T('mPivotNeed')); return; }
+  const heads = [];
+  for(let c=u.c1;c<=u.c2;c++){
+    const h = String(cellValue(u.r1,c) ?? '').trim();
+    heads.push(h || colName(c));
+  }
+  const fill = (sel, withNone)=>{
+    sel.innerHTML = (withNone?`<option value="-1">${T('pvNone')}</option>`:'') +
+      heads.map((h,i)=>`<option value="${i}">${escHtml(h)}</option>`).join('');
+  };
+  fill($('pvRow'),false); fill($('pvCol'),true); fill($('pvVal'),false);
+  $('pvCol').value='-1';
+  if(heads.length>1) $('pvVal').value=String(heads.length-1);
+  const d=$('dlgPivot');
+  $('pvOk').onclick = async ()=>{
+    d.close();
+    await buildPivot(u, +$('pvRow').value, +$('pvCol').value, +$('pvVal').value, $('pvAgg').value);
+  };
+  $('pvCancel').onclick = ()=> d.close();
+  d.showModal();
+};
+async function buildPivot(u, rf, cf, vf, agg){
+  const rows = [];
+  for(let r=u.r1+1; r<=u.r2; r++){
+    const rk = String(cellValue(r, u.c1+rf) ?? '');
+    const ck = cf>=0 ? String(cellValue(r, u.c1+cf) ?? '') : '';
+    if(rk==='' && ck==='') continue;
+    const v = toNum(cellValue(r, u.c1+vf));
+    rows.push([rk, ck, v]);
+  }
+  if(!rows.length){ msg(T('mPivotNeed')); return; }
+  const cmpKey=(a,b)=>{ const na=toNum(a), nb=toNum(b); if(na!=null&&nb!=null) return na-nb; return String(a).localeCompare(String(b)); };
+  const rKeys=[...new Set(rows.map(x=>x[0]))].sort(cmpKey);
+  const cKeys=cf>=0 ? [...new Set(rows.map(x=>x[1]))].sort(cmpKey) : [''];
+  const cell={};
+  for(const [rk,ck,v] of rows){
+    const k=rk+'\u0001'+ck;
+    const o = cell[k] = cell[k] || {sum:0,cnt:0,n:0,min:Infinity,max:-Infinity};
+    o.cnt++;
+    if(v!=null){ o.sum+=v; o.n++; o.min=Math.min(o.min,v); o.max=Math.max(o.max,v); }
+  }
+  const calc = o=>{
+    if(!o) return '';
+    if(agg==='count') return o.cnt;
+    if(!o.n) return '';
+    if(agg==='sum') return Math.round(o.sum*1e8)/1e8;
+    if(agg==='avg') return Math.round(o.sum/o.n*1e8)/1e8;
+    if(agg==='min') return o.min;
+    if(agg==='max') return o.max;
+    return '';
+  };
+  const aggName = {sum:T('pvSum'),count:T('pvCount'),avg:T('pvAvg'),min:T('pvMin'),max:T('pvMax')}[agg];
+  const headRow = [ String(cellValue(u.r1,u.c1+rf)||'') + ' \\ ' + aggName ];
+  if(cf>=0){ headRow.push(...cKeys.map(String)); headRow.push(T('pvTotal')); }
+  else headRow.push(aggName);
+  const out=[headRow];
+  const colTot = cKeys.map(()=>({sum:0,cnt:0,n:0,min:Infinity,max:-Infinity}));
+  for(const rk of rKeys){
+    const line=[rk];
+    const rTot={sum:0,cnt:0,n:0,min:Infinity,max:-Infinity};
+    cKeys.forEach((ck,ci)=>{
+      const o=cell[rk+'\u0001'+ck];
+      line.push(calc(o));
+      if(o){ rTot.sum+=o.sum; rTot.cnt+=o.cnt; rTot.n+=o.n; rTot.min=Math.min(rTot.min,o.min); rTot.max=Math.max(rTot.max,o.max);
+             const t=colTot[ci]; t.sum+=o.sum; t.cnt+=o.cnt; t.n+=o.n; t.min=Math.min(t.min,o.min); t.max=Math.max(t.max,o.max); }
+    });
+    if(cf>=0) line.push(calc(rTot));
+    out.push(line);
+  }
+  const totLine=[T('pvTotal')];
+  const gTot={sum:0,cnt:0,n:0,min:Infinity,max:-Infinity};
+  colTot.forEach(t=>{ totLine.push(calc(t)); gTot.sum+=t.sum; gTot.cnt+=t.cnt; gTot.n+=t.n; gTot.min=Math.min(gTot.min,t.min); gTot.max=Math.max(gTot.max,t.max); });
+  if(cf>=0) totLine.push(calc(gTot));
+  out.push(totLine);
+  /* 결과를 현재 선택 셀 위치에 기록 */
+  const pr=selR, pc=selC;
+  let overlap=false;
+  for(let r=0;r<out.length && !overlap;r++) for(let c=0;c<out[r].length;c++){
+    const tr=pr+r, tc=pc+c;
+    if(tr<shRows && tc<shCols && shData[tr][tc]!=='' && shData[tr][tc]!=null){ overlap=true; break; }
+  }
+  if(overlap && !await askConfirm(T('cfPivotOverwrite'))) return;
+  pushUndo();
+  growTo(pr+out.length, pc+Math.max(...out.map(r=>r.length)));
+  out.forEach((line,r)=> line.forEach((v,c)=>{
+    setCellRaw(pr+r, pc+c, v==null?'':String(v));
+    const k=cellKey(pr+r,pc+c);
+    if(r===0 || c===0 || r===out.length-1){ shStyle[k]={...(shStyle[k]||{}), bold:true, bg:(r===0?'#E8EEF7':(shStyle[k]||{}).bg)}; }
+    else delete shStyle[k];
+  }));
+  renderSheet();
+  ancR=pr; ancC=pc; setSel(pr,pc,true);
+  msg(T('mPivotDone'));
+}
+
+/* ── 엑셀/CSV 열기 → 스프레드시트로 ── */
 $('shOpen').onclick = ()=>{
   if(typeof XLSX==='undefined'){ msg(T('mXlsxNoMod')); return; }
   $('fileSheetOpen').click();
@@ -2223,13 +3217,17 @@ $('fileSheetOpen').onchange = e=>{
       shRows = Math.max(30, nR); shCols = Math.max(12, nC);
       shData = Array.from({length:shRows},()=>Array(shCols).fill(''));
       shStyle = {};
+      shColW = Array(shCols).fill(SH_DEFAULT_W);
+      shUndo=[]; shRedo=[];
       for(let r=0;r<nR;r++) for(let c=0;c<nC;c++){
         const addr = XLSX.utils.encode_cell({r,c});
         const cell = ws[addr];
         if(!cell) continue;
         shData[r][c] = cell.f ? '='+cell.f : (cell.v==null?'':cell.v);
       }
-      buildHF(); selR=0; selC=0; renderSheet();
+      shMerges = (ws['!merges']||[]).map(m=>({r:m.s.r, c:m.s.c, rs:m.e.r-m.s.r+1, cs:m.e.c-m.s.c+1}))
+                  .filter(m=>m.rs>1||m.cs>1);
+      buildHF(); selR=0; selC=0; ancR=0; ancC=0; renderSheet();
       msg(f.name + T('mXlsxImported'));
     }catch(err){ msg(T('mImportFail')+err.message); }
   };
@@ -2242,14 +3240,15 @@ function sheetToAOA(computed){
   for(let r=0;r<shRows;r++) for(let c=0;c<shCols;c++) if(shData[r][c]!==''&&shData[r][c]!=null){ maxR=Math.max(maxR,r); maxC=Math.max(maxC,c); }
   for(let r=0;r<=maxR;r++){ const row=[]; for(let c=0;c<=maxC;c++){
     const raw=shData[r][c];
-    if(computed && typeof raw==='string' && raw[0]==='='){ const v=cellDisplay(r,c); const n=parseFloat(v); row.push(!isNaN(n)&&v.trim()!==''?n:v); }
-    else { const n=parseFloat(raw); row.push(typeof raw==='string'&&!isNaN(n)&&raw.trim()!==''?n:raw); }
+    if(computed && typeof raw==='string' && raw[0]==='='){ const v=cellValue(r,c); const n=toNum(v); row.push(n!=null?n:String(v)); }
+    else { const n=toNum(raw); row.push(typeof raw==='string'&&n!=null&&String(raw).trim()!==''?n:raw); }
   } out.push(row); }
   return out;
 }
 $('shSaveXlsx').onclick = async ()=>{
   if(typeof XLSX==='undefined'){ msg(T('mXlsxNoMod')); return; }
   const ws=XLSX.utils.aoa_to_sheet(sheetToAOA(true));
+  if(shMerges.length) ws['!merges'] = shMerges.map(m=>({s:{r:m.r,c:m.c}, e:{r:m.r+m.rs-1, c:m.c+m.cs-1}}));
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Sheet1');
   const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
   await download(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}), T('fnTable')+new Date().toISOString().slice(0,10)+'.xlsx');
@@ -2272,6 +3271,254 @@ $('shToDoc').onclick = ()=>{
   else document.execCommand('insertHTML',false,html);
   editor.dataset.welcome='0';
   msg(T('mSentToDoc'));
+};
+
+/* ═══════════════ 3D(STEP) 모드 ═══════════════ */
+let d3Ready=false, d3Scene=null, d3Cam=null, d3Renderer=null, d3Group=null, d3Wire=false;
+let d3Target=null, d3Dist=100, d3Theta=Math.PI/4, d3Phi=Math.PI/3;  /* 궤도 카메라 */
+let occtPromise=null, d3FileName='model';
+
+function ensure3d(){
+  if(d3Ready) return;
+  if(typeof THREE === 'undefined'){ msg(T('m3dNoMod')); return; }
+  const area = $('d3Area');
+  d3Scene = new THREE.Scene();
+  d3Scene.background = new THREE.Color(0xEDEFF2);
+  d3Cam = new THREE.PerspectiveCamera(45, 1, 0.1, 100000);
+  d3Target = new THREE.Vector3(0,0,0);
+  d3Renderer = new THREE.WebGLRenderer({antialias:true, preserveDrawingBuffer:true});
+  d3Renderer.setPixelRatio(window.devicePixelRatio||1);
+  area.appendChild(d3Renderer.domElement);
+  d3Renderer.domElement.id='d3Canvas';
+  /* 조명 */
+  d3Scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 0.85));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.7); dl.position.set(1,2,1.5); d3Scene.add(dl);
+  const dl2 = new THREE.DirectionalLight(0xffffff, 0.3); dl2.position.set(-1.5,-1,-1); d3Scene.add(dl2);
+  /* 바닥 격자 */
+  const grid = new THREE.GridHelper(200, 20, 0xB9C2CE, 0xD9DDE3);
+  grid.name='grid'; d3Scene.add(grid);
+  d3Resize();
+  window.addEventListener('resize', d3Resize);
+  d3Mouse();
+  d3Ready = true;
+  d3Render();
+}
+function d3Resize(){
+  if(!d3Renderer) return;
+  const area = $('d3Area');
+  const w = area.clientWidth||800, h = area.clientHeight||500;
+  d3Renderer.setSize(w,h);
+  d3Cam.aspect = w/h; d3Cam.updateProjectionMatrix();
+  d3Render();
+}
+function d3ApplyOrbit(){
+  const sp = Math.sin(d3Phi), r = d3Dist;
+  d3Cam.position.set(
+    d3Target.x + r*sp*Math.sin(d3Theta),
+    d3Target.y + r*Math.cos(d3Phi),
+    d3Target.z + r*sp*Math.cos(d3Theta)
+  );
+  d3Cam.lookAt(d3Target);
+}
+function d3Render(){ if(!d3Renderer) return; d3ApplyOrbit(); d3Renderer.render(d3Scene, d3Cam); }
+/* 마우스: 왼쪽 드래그 회전 / 오른쪽 또는 Shift 드래그 이동 / 휠 확대·축소 */
+function d3Mouse(){
+  const el = d3Renderer.domElement;
+  let drag=null;
+  el.addEventListener('contextmenu', e=>e.preventDefault());
+  el.addEventListener('mousedown', e=>{
+    drag = { x:e.clientX, y:e.clientY, pan:(e.button===2||e.shiftKey) };
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', e=>{
+    if(!drag) return;
+    const dx=e.clientX-drag.x, dy=e.clientY-drag.y;
+    drag.x=e.clientX; drag.y=e.clientY;
+    if(drag.pan){
+      const s = d3Dist/600;
+      const right = new THREE.Vector3().subVectors(d3Cam.position, d3Target).cross(d3Cam.up).normalize();
+      const up = d3Cam.up.clone().normalize();
+      d3Target.addScaledVector(right, dx*s).addScaledVector(up, dy*s);
+    } else {
+      d3Theta -= dx*0.008;
+      d3Phi = Math.max(0.05, Math.min(Math.PI-0.05, d3Phi - dy*0.008));
+    }
+    d3Render();
+  });
+  window.addEventListener('mouseup', ()=>{ drag=null; });
+  el.addEventListener('wheel', e=>{
+    e.preventDefault();
+    d3Dist *= (e.deltaY>0 ? 1.12 : 0.9);
+    d3Render();
+  }, {passive:false});
+}
+/* STEP 파서(OpenCascade WASM) 준비 — 처음 쓸 때 한 번만 내려받음 */
+function getOcct(){
+  if(occtPromise) return occtPromise;
+  if(typeof occtimportjs === 'undefined'){ msg(T('m3dNoOcct')); return null; }
+  occtPromise = occtimportjs({
+    locateFile: f => 'https://cdn.jsdelivr.net/npm/occt-import-js@0.0.23/dist/' + f
+  });
+  return occtPromise;
+}
+$('d3Open').onclick = ()=>{
+  if(typeof THREE==='undefined'){ msg(T('m3dNoMod')); return; }
+  $('fileStepOpen').click();
+};
+$('fileStepOpen').onchange = e=>{
+  const f=e.target.files[0]; if(!f) return;
+  d3FileName = f.name.replace(/\.(step|stp)$/i,'');
+  const rd=new FileReader();
+  rd.onload = async ()=>{
+    msg(T('m3dLoading'));
+    try{
+      const oc = getOcct(); if(!oc) return;
+      const occt = await oc;
+      const result = occt.ReadStepFile(new Uint8Array(rd.result), null);
+      if(!result || !result.success || !result.meshes || !result.meshes.length){ msg(T('m3dFail')); return; }
+      loadMeshes(result.meshes);
+      msg(f.name + T('m3dOpened'));
+    }catch(err){ msg(T('m3dFail') + ' ' + (err.message||'')); }
+  };
+  rd.readAsArrayBuffer(f); e.target.value='';
+};
+function loadMeshes(meshes){
+  ensure3d();
+  if(d3Group){ d3Scene.remove(d3Group); d3Group.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material) o.material.dispose(); }); }
+  d3Group = new THREE.Group();
+  for(const m of meshes){
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(m.attributes.position.array, 3));
+    if(m.attributes.normal) g.setAttribute('normal', new THREE.Float32BufferAttribute(m.attributes.normal.array, 3));
+    if(m.index) g.setIndex(new THREE.Uint32BufferAttribute(m.index.array, 1));
+    if(!m.attributes.normal) g.computeVertexNormals();
+    let col = 0x5B7DA6;
+    if(m.color && m.color.length===3) col = new THREE.Color(m.color[0], m.color[1], m.color[2]).getHex();
+    const mat = new THREE.MeshPhongMaterial({color:col, side:THREE.DoubleSide, wireframe:d3Wire, shininess:40});
+    const mesh = new THREE.Mesh(g, mat);
+    /* 모서리 선(형상 윤곽) */
+    try{
+      const edges = new THREE.EdgesGeometry(g, 25);
+      mesh.add(new THREE.LineSegments(edges, new THREE.LineBasicMaterial({color:0x33404F})));
+    }catch(e){}
+    d3Group.add(mesh);
+  }
+  d3Scene.add(d3Group);
+  $('d3Empty').style.display='none';
+  d3Fit();
+}
+function d3Bounds(){
+  if(!d3Group) return null;
+  const box = new THREE.Box3().setFromObject(d3Group);
+  if(box.isEmpty()) return null;
+  return box;
+}
+function d3Fit(){
+  const box = d3Bounds(); if(!box){ d3Render(); return; }
+  const c = box.getCenter(new THREE.Vector3());
+  const s = box.getSize(new THREE.Vector3()).length();
+  d3Target.copy(c);
+  d3Dist = Math.max(s*1.4, 1);
+  /* 격자를 모델 크기·바닥에 맞춤 */
+  const old = d3Scene.getObjectByName('grid');
+  if(old) d3Scene.remove(old);
+  const gs = Math.pow(10, Math.ceil(Math.log10(Math.max(s,1))));
+  const grid = new THREE.GridHelper(gs, 20, 0xB9C2CE, 0xD9DDE3);
+  grid.name='grid'; grid.position.y = box.min.y; grid.position.x=c.x; grid.position.z=c.z;
+  d3Scene.add(grid);
+  d3Render();
+}
+/* 보기 방향 */
+function d3View(theta, phi){ d3Theta=theta; d3Phi=phi; d3Fit(); }
+$('d3Front').onclick = ()=> d3View(0, Math.PI/2);            /* 정면(+Z에서) */
+$('d3Top').onclick   = ()=> d3View(0, 0.06);                 /* 윗면 */
+$('d3Right').onclick = ()=> d3View(Math.PI/2, Math.PI/2);    /* 우측면(+X에서) */
+$('d3Iso').onclick   = ()=> d3View(Math.PI/4, Math.PI/3);    /* 등각 */
+$('d3FitBtn').onclick = ()=> d3Fit();
+$('d3WireBtn').onclick = ()=>{
+  d3Wire = !d3Wire;
+  if(d3Group) d3Group.traverse(o=>{ if(o.isMesh) o.material.wireframe = d3Wire; });
+  d3Render();
+};
+/* ── PDF 도면 저장: 정면·윗면·우측·등각 4면도 ── */
+function d3Shot(theta, phi, w, h){
+  const oldW = d3Renderer.domElement.width/(window.devicePixelRatio||1);
+  const oldH = d3Renderer.domElement.height/(window.devicePixelRatio||1);
+  const oT=d3Theta, oP=d3Phi;
+  d3Renderer.setSize(w,h,false);
+  d3Cam.aspect=w/h; d3Cam.updateProjectionMatrix();
+  d3Theta=theta; d3Phi=phi; d3Render();
+  const url = d3Renderer.domElement.toDataURL('image/png');
+  d3Theta=oT; d3Phi=oP;
+  d3Renderer.setSize(oldW,oldH,false);
+  d3Cam.aspect=oldW/oldH; d3Cam.updateProjectionMatrix(); d3Render();
+  return url;
+}
+const asciiOnly = s => String(s).replace(/[^\x20-\x7E]/g,'').trim() || 'model';
+$('d3SavePdf').onclick = async ()=>{
+  if(!d3Group){ msg(T('m3dOpenFirst')); return; }
+  if(typeof PDFLib === 'undefined'){ msg(T('mPdfNoMod')); return; }
+  try{
+    const views = [
+      {n:'FRONT',      t:0,          p:Math.PI/2},
+      {n:'TOP',        t:0,          p:0.06},
+      {n:'RIGHT SIDE', t:Math.PI/2,  p:Math.PI/2},
+      {n:'ISOMETRIC',  t:Math.PI/4,  p:Math.PI/3},
+    ];
+    const shots = views.map(v=> d3Shot(v.t, v.p, 1000, 700));
+    const pdf = await PDFLib.PDFDocument.create();
+    const page = pdf.addPage([842, 595]);   /* A4 가로 */
+    const font = await pdf.embedFont(PDFLib.StandardFonts.Helvetica);
+    const fontB = await pdf.embedFont(PDFLib.StandardFonts.HelveticaBold);
+    const M=24, TH=34;
+    const cw=(842-M*2)/2, ch=(595-M*2-TH)/2;
+    page.drawRectangle({x:M, y:M, width:842-M*2, height:595-M*2, borderColor:PDFLib.rgb(0.2,0.24,0.3), borderWidth:1});
+    /* 제목줄 */
+    page.drawLine({start:{x:M,y:595-M-TH}, end:{x:842-M,y:595-M-TH}, color:PDFLib.rgb(0.2,0.24,0.3), thickness:1});
+    page.drawText(asciiOnly(d3FileName).toUpperCase(), {x:M+12, y:595-M-23, size:13, font:fontB, color:PDFLib.rgb(0.13,0.16,0.2)});
+    page.drawText('SCALE: FIT   UNIT: AS MODELED   ' + new Date().toISOString().slice(0,10) + '   DeskHaus', {x:842-M-330, y:595-M-22, size:9, font, color:PDFLib.rgb(0.35,0.4,0.47)});
+    /* 4분면 */
+    page.drawLine({start:{x:M+cw, y:M}, end:{x:M+cw, y:595-M-TH}, color:PDFLib.rgb(0.75,0.78,0.82), thickness:0.7});
+    page.drawLine({start:{x:M, y:M+ch}, end:{x:842-M, y:M+ch}, color:PDFLib.rgb(0.75,0.78,0.82), thickness:0.7});
+    for(let i=0;i<4;i++){
+      const png = await pdf.embedPng(shots[i]);
+      const cx = M + (i%2)*cw, cy = M + (1-Math.floor(i/2))*ch;
+      const pad=14, lw=cw-pad*2, lh=ch-pad*2-14;
+      const sc = Math.min(lw/png.width, lh/png.height);
+      const w=png.width*sc, h=png.height*sc;
+      page.drawImage(png, {x:cx+(cw-w)/2, y:cy+12+(ch-12-h)/2, width:w, height:h});
+      page.drawText(views[i].n, {x:cx+10, y:cy+7, size:9, font:fontB, color:PDFLib.rgb(0.25,0.3,0.38)});
+    }
+    const bytes = await pdf.save();
+    await download(new Blob([bytes],{type:'application/pdf'}), asciiOnly(d3FileName)+'_drawing.pdf');
+  }catch(err){ msg(T('mPdfFail')+(err.message||'')); }
+};
+/* ── DXF 저장 (삼각형 3DFACE) — AutoCAD 등에서 열어 DWG로 저장 가능 ── */
+$('d3SaveDxf').onclick = async ()=>{
+  if(!d3Group){ msg(T('m3dOpenFirst')); return; }
+  const out = ['0','SECTION','2','HEADER','9','$ACADVER','1','AC1009','0','ENDSEC','0','SECTION','2','ENTITIES'];
+  const f6 = x => (Math.round(x*1e6)/1e6).toString();
+  let tri = 0;
+  d3Group.traverse(o=>{
+    if(!o.isMesh) return;
+    const pos = o.geometry.getAttribute('position');
+    const idx = o.geometry.getIndex();
+    const face = (a,b,c)=>{
+      out.push('0','3DFACE','8','0');
+      const pts = [a,b,c,c];
+      for(let k=0;k<4;k++){
+        const i = pts[k];
+        out.push(String(10+k), f6(pos.getX(i)), String(20+k), f6(pos.getY(i)), String(30+k), f6(pos.getZ(i)));
+      }
+      tri++;
+    };
+    if(idx){ for(let i=0;i<idx.count;i+=3) face(idx.getX(i), idx.getX(i+1), idx.getX(i+2)); }
+    else{ for(let i=0;i<pos.count;i+=3) face(i,i+1,i+2); }
+  });
+  out.push('0','ENDSEC','0','EOF','');
+  if(!tri){ msg(T('m3dFail')); return; }
+  await download(new Blob([out.join('\r\n')],{type:'application/dxf'}), asciiOnly(d3FileName)+'.dxf');
+  msg(T('m3dDxfDone'));
 };
 
 /* ═══════════════ PDF 모드 ═══════════════ */
