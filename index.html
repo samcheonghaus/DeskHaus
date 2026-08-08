@@ -306,7 +306,7 @@
     <div class="tab" id="tabPpt"><span class="dot"></span><span data-i18n="tabPpt">PPT</span></div>
     <div class="tab" id="tab3d"><span class="dot"></span><span data-i18n="tab3d">3D</span></div>
   </div>
-  <button id="langBtn" title="Language / 언어" style="margin-left:auto; margin-bottom:12px;">EN</button>
+  <div style="margin-left:auto; display:flex; align-items:flex-end; gap:6px; padding-bottom:12px;"><button id="helpBtn" data-i18n="helpBtn" title="사용 설명서" style="font-size:13px;">❓ 설명서</button> <button id="langBtn" title="Language / 언어">EN</button></div>
 </header>
 
 <!-- ══ 글 모드 툴바 ══ -->
@@ -798,6 +798,8 @@ const I18N = {
     dlgPivotTitle:'피벗 테이블', pvLblRow:'행 필드', pvLblCol:'열 필드', pvLblVal:'값 필드', pvLblAgg:'계산',
     pvNone:'(없음)', pvSum:'합계', pvCount:'개수', pvAvg:'평균', pvMin:'최소', pvMax:'최대', pvTotal:'총합계',
     pvHint:'첫 행을 머리글로 보고, 결과는 현재 선택한 셀 위치에 넣습니다.',
+    helpBtn:'❓ 설명서',
+    mHelpBlocked:'설명서 창이 차단되었습니다. 브라우저의 팝업 차단을 허용해 주세요.',
     mPivotNeed:'피벗을 만들려면 머리글 1행 + 데이터가 필요합니다.',
     cfPivotOverwrite:'선택한 위치에 이미 값이 있습니다. 덮어쓸까요?',
     mPivotDone:'피벗 테이블을 만들었습니다.',
@@ -936,6 +938,8 @@ const I18N = {
     dlgPivotTitle:'Pivot table', pvLblRow:'Row field', pvLblCol:'Column field', pvLblVal:'Value field', pvLblAgg:'Aggregate',
     pvNone:'(none)', pvSum:'Sum', pvCount:'Count', pvAvg:'Average', pvMin:'Min', pvMax:'Max', pvTotal:'Grand total',
     pvHint:'The first row is treated as headers; the result is placed at the currently selected cell.',
+    helpBtn:'❓ Help',
+    mHelpBlocked:'The guide window was blocked. Please allow pop-ups for this page.',
     mPivotNeed:'A header row plus data rows are needed to build a pivot.',
     cfPivotOverwrite:'The target area already has values. Overwrite?',
     mPivotDone:'Pivot table created.',
@@ -2208,7 +2212,12 @@ $('langBtn').onclick = ()=>{
 editor.addEventListener('input', ()=>{ editor.dataset.welcome = '0'; });
 /* ═══════════════ 표(스프레드시트) 모드 ═══════════════ */
 let hf = null;                 // HyperFormula 인스턴스
-let shRows = 30, shCols = 12;  // 격자 크기
+let shRows = 200, shCols = 40; // 격자 크기 (스크롤하면 자동으로 늘어남)
+const SH_ROWS_INIT = 200, SH_COLS_INIT = 40;
+const SH_GROW_ROWS = 100, SH_GROW_COLS = 10;   // 끝에 닿으면 한 번에 늘리는 양
+let shCellEls = null;          // 'r,c' → td 캐시 (querySelector 반복 방지)
+let shLive = new Set();        // 값·서식이 있는 칸 목록 (빈 격자를 매번 훑지 않기 위함)
+let shHeadCols = null, shHeadRows = null;   // 머리글 th 캐시
 let shData = null;             // 원본 입력값(문자열/수식) 2차원 배열
 let shStyle = null;            // 셀 스타일 { 'r,c': {bold,italic,under,color,bg,align,comma,pct,dec} }
 let shColW = [];               // 열 너비(px)
@@ -2234,6 +2243,7 @@ function rangeRef(r1,c1,r2,c2){ return (r1===r2&&c1===c2) ? refOf(r1,c1) : refOf
 function ensureSheet(){
   if(sheetReady) return;
   if(typeof HyperFormula === 'undefined'){ msg(T('mSheetNoMod')); return; }
+  shRows = SH_ROWS_INIT; shCols = SH_COLS_INIT;
   shData = Array.from({length:shRows}, ()=> Array(shCols).fill(''));
   shStyle = {};
   shColW = Array(shCols).fill(SH_DEFAULT_W);
@@ -2243,7 +2253,9 @@ function ensureSheet(){
 }
 function buildHF(){
   if(hf){ try{ hf.destroy(); }catch(e){} }
-  hf = HyperFormula.buildFromArray(shData, { licenseKey:'gpl-v3' });
+  /* 빈 칸은 null 로 넘김 — 빈 문자열을 넣으면 계산 엔진이 수만 개의 값을 떠안아 느려집니다 */
+  const arr = shData.map(row => row.map(v => (v==='' || v==null) ? null : v));
+  hf = HyperFormula.buildFromArray(arr, { licenseKey:'gpl-v3' });
 }
 /* 계산된 원시값 (수식이면 결과, 아니면 입력값) */
 function cellValue(r,c){
@@ -2324,24 +2336,72 @@ function renderSheet(){
   }
   html += '</tbody>';
   tb.innerHTML = html;
+  /* 셀 요소 캐시 — 이후 조회는 querySelector 없이 즉시 */
+  rebuildLive();
+  shCellEls = {}; shHeadCols = {}; shHeadRows = {}; shPainted = null;
+  const tds = tb.getElementsByTagName('td');
+  for(let i=0;i<tds.length;i++){
+    const td = tds[i];
+    shCellEls[td.dataset.r + ',' + td.dataset.c] = td;
+  }
+  const ths = tb.getElementsByTagName('th');
+  for(let i=0;i<ths.length;i++){
+    const th = ths[i];
+    if(th.dataset.hc != null) shHeadCols[th.dataset.hc] = th;
+    else if(th.dataset.hr != null) shHeadRows[th.dataset.hr] = th;
+  }
   paintSel();
+}
+/* 좌표 → td (병합으로 덮인 칸은 병합 앵커 셀을 돌려줌) */
+function cellEl(r,c){
+  if(!shCellEls) return null;
+  let td = shCellEls[r+','+c];
+  if(!td){ const mg = mergeAt(r,c); if(mg) td = shCellEls[mg.r+','+mg.c]; }
+  return td || null;
 }
 function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 /* ── 선택 표시 + 상태 통계 ── */
+let shEditFinish = null;   // 편집 중인 셀의 마무리 함수 (다른 곳을 클릭할 때 확정용)
+/* 편집 중이던 내용을 확정합니다 — 선택 위치는 바꾸지 않습니다.
+   엑셀처럼 "입력하다가 옆 칸을 클릭하면 입력은 저장되고 그 칸으로 바로 이동" 하도록 하는 핵심입니다. */
+function commitPendingEdit(){
+  if(shEditFinish){ shEditFinish(true, 0, 0, true); return true; }
+  const fi = $('formulaInput');
+  if(document.activeElement === fi){
+    const v = fi.value;
+    if(String(shData[selR][selC] ?? '') !== v){ pushUndo(); setCellValue(selR, selC, v); }
+    fi.blur();
+    return true;
+  }
+  return false;
+}
+let shPainted = null;   // 직전에 칠한 선택 범위 (전체 스캔 대신 이것만 지움)
+function clearPainted(){
+  const tb = $('sheetTable');
+  if(!shPainted){ return; }
+  const {r1,c1,r2,c2} = shPainted;
+  for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++){
+    const td = shCellEls && shCellEls[r+','+c];
+    if(td) td.classList.remove('sel','rsel');
+  }
+  for(let c=c1;c<=c2;c++){ const th=shHeadCols && shHeadCols[c]; if(th) th.classList.remove('hsel'); }
+  for(let r=r1;r<=r2;r++){ const th=shHeadRows && shHeadRows[r]; if(th) th.classList.remove('hsel'); }
+  shPainted = null;
+}
 function paintSel(){
   const tb = $('sheetTable');
-  tb.querySelectorAll('td.sel, td.rsel').forEach(td=>td.classList.remove('sel','rsel'));
-  tb.querySelectorAll('th.hsel').forEach(th=>th.classList.remove('hsel'));
+  clearPainted();
   const {r1,c1,r2,c2} = selRange();
   for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++){
-    const td = tb.querySelector(`td[data-r="${r}"][data-c="${c}"]`);
+    const td = shCellEls && shCellEls[r+','+c];
     if(td) td.classList.add('rsel');
   }
-  const act = tb.querySelector(`td[data-r="${selR}"][data-c="${selC}"]`);
+  const act = cellEl(selR,selC);
   if(act) act.classList.add('sel');
-  for(let c=c1;c<=c2;c++){ const th=tb.querySelector(`th[data-hc="${c}"]`); if(th) th.classList.add('hsel'); }
-  for(let r=r1;r<=r2;r++){ const th=tb.querySelector(`th[data-hr="${r}"]`); if(th) th.classList.add('hsel'); }
+  for(let c=c1;c<=c2;c++){ const th=shHeadCols && shHeadCols[c]; if(th) th.classList.add('hsel'); }
+  for(let r=r1;r<=r2;r++){ const th=shHeadRows && shHeadRows[r]; if(th) th.classList.add('hsel'); }
+  shPainted = {r1,c1,r2,c2};
   /* 이름 상자 / 수식 입력줄 */
   $('cellRef').textContent = rangeRef(r1,c1,r2,c2);
   if(document.activeElement !== $('formulaInput')){
@@ -2355,6 +2415,8 @@ function paintSel(){
   if(r1===r2 && c1===c2){ stat.textContent=''; }
   else{
     let sum=0, nCnt=0, cnt=0;
+    const cells = (r2-r1+1)*(c2-c1+1);
+    if(cells > 200000){ stat.textContent=''; return; }   /* 너무 큰 선택은 통계 생략 */
     for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++){
       const v = cellValue(r,c);
       if(v!=='' && v!=null && v!=='#ERR'){ cnt++; const n=toNum(v); if(n!=null){ sum+=n; nCnt++; } }
@@ -2368,8 +2430,7 @@ function paintSel(){
 function positionFillHandle(){
   const fh = $('shFillHandle');
   const {r2,c2} = selRange();
-  let td = $('sheetTable').querySelector(`td[data-r="${r2}"][data-c="${c2}"]`);
-  if(!td){ const mg = mergeAt(r2,c2); if(mg) td = $('sheetTable').querySelector(`td[data-r="${mg.r}"][data-c="${mg.c}"]`); }
+  const td = cellEl(r2,c2);
   if(!td){ fh.style.display='none'; return; }
   fh.style.display='block';
   fh.style.left = (td.offsetLeft + td.offsetWidth - 4) + 'px';
@@ -2387,7 +2448,7 @@ function setSel(r,c,extend){
   if(mg){ r=mg.r; c=mg.c; }
   selR=r; selC=c;
   if(!extend){ ancR=r; ancC=c; }
-  const td = $('sheetTable').querySelector(`td[data-r="${r}"][data-c="${c}"]`);
+  const td = cellEl(r,c);
   if(td && td.scrollIntoView) td.scrollIntoView({block:'nearest', inline:'nearest'});
   paintSel();
 }
@@ -2399,12 +2460,12 @@ function snapshot(){
            rows: shRows, cols: shCols, colW: shColW.slice(),
            merges: shMerges.map(m=>({...m})) };
 }
-function pushUndo(){ shUndo.push(snapshot()); if(shUndo.length>100) shUndo.shift(); shRedo.length=0; }
+function pushUndo(){ shUndo.push(snapshot()); if(shUndo.length>40) shUndo.shift(); shRedo.length=0; }
 function restore(s){
   shData=s.data.map(r=>r.slice()); shStyle=JSON.parse(JSON.stringify(s.style));
   shRows=s.rows; shCols=s.cols; shColW=s.colW.slice();
   shMerges = (s.merges||[]).map(m=>({...m}));
-  buildHF(); 
+  buildHF(); rebuildLive(); 
   selR=Math.min(selR,shRows-1); selC=Math.min(selC,shCols-1);
   ancR=Math.min(ancR,shRows-1); ancC=Math.min(ancC,shCols-1);
   renderSheet();
@@ -2415,8 +2476,14 @@ $('shUndoBtn').onclick = shDoUndo;
 $('shRedoBtn').onclick = shDoRedo;
 
 /* ── 셀 값 설정 ── */
+function markLive(r,c){ shLive.add(r+','+c); }
+let shBatch = false;   /* 대량 입력 중에는 셀마다 재계산하지 않고 마지막에 한 번만 */
+function beginBatch(){ shBatch = true; }
+function endBatch(){ shBatch = false; buildHF(); }
 function setCellRaw(r,c,val){
   shData[r][c] = val;
+  markLive(r,c);
+  if(shBatch) return;
   try{ hf.setCellContents({sheet:0, row:r, col:c}, [[val===''?null:val]]); }catch(e){ buildHF(); }
 }
 function setCellValue(r,c,val){  /* 단일 셀 + 화면 갱신 (undo는 호출부에서) */
@@ -2425,12 +2492,25 @@ function setCellValue(r,c,val){  /* 단일 셀 + 화면 갱신 (undo는 호출�
 }
 /* 화면만 다시 그림(수식 결과 갱신) — 선택/스타일 유지 */
 function recalcRender(){
-  const tb = $('sheetTable');
-  for(let r=0;r<shRows;r++) for(let c=0;c<shCols;c++){
-    const td = tb.querySelector(`td[data-r="${r}"][data-c="${c}"]`);
-    if(td){ td.textContent = cellDisplay(r,c); td.style.cssText = cellStyleStr(r,c); }
+  if(!shCellEls){ renderSheet(); return; }
+  /* 값·서식이 있는 칸만 갱신 — 빈 격자는 건드리지 않아 큰 표에서도 빠릅니다 */
+  for(const key of shLive){
+    const td = shCellEls[key];
+    if(!td) continue;
+    const p = key.indexOf(',');
+    const r = +key.slice(0,p), c = +key.slice(p+1);
+    if(r>=shRows || c>=shCols) continue;
+    td.textContent = cellDisplay(r,c);
+    td.style.cssText = cellStyleStr(r,c);
   }
   paintSel();
+}
+/* 활성 목록 다시 만들기 (표 전체 교체·정렬·행열 이동 후) */
+function rebuildLive(){
+  shLive = new Set();
+  for(let r=0;r<shRows;r++) for(let c=0;c<shCols;c++)
+    if(shData[r][c]!=='' && shData[r][c]!=null) shLive.add(r+','+c);
+  for(const k in shStyle) shLive.add(k);
 }
 /* 격자 확장 */
 function growTo(rows, cols){
@@ -2490,11 +2570,12 @@ sheetTb.addEventListener('mousedown', e=>{
   const td = e.target.closest('td');
   if(td){
     const r=+td.dataset.r, c=+td.dataset.c;
+    if(td.classList.contains('editing')) return;   /* 편집 중인 칸 안에서의 클릭은 그대로 */
+    /* 수식(=)을 입력하는 중이면 클릭한 칸을 참조로 넣습니다 */
     const t = refEditTarget();
-    if(t && !td.classList.contains('editing')){
-      if(tryInsertRef(t, r, c)){ e.preventDefault(); return; }
-    }
-    if(td.classList.contains('editing')) return;
+    if(t && tryInsertRef(t, r, c)){ e.preventDefault(); return; }
+    /* 그 밖에는 입력을 확정하고 클릭한 칸으로 바로 이동 (엑셀과 동일) */
+    commitPendingEdit();
     shDragging = true;
     setSel(r, c, e.shiftKey);
     e.preventDefault();
@@ -2503,6 +2584,7 @@ sheetTb.addEventListener('mousedown', e=>{
   }
   const th = e.target.closest('th');
   if(th){
+    commitPendingEdit();
     if(th.dataset.hc!=null){  /* 열 머리글: 크기조절 or 열 선택 */
       const rect = th.getBoundingClientRect();
       if(rect.right - e.clientX < 6){ startColResize(+th.dataset.hc, e); e.preventDefault(); return; }
@@ -2559,6 +2641,7 @@ function startColResize(c, ev){
 /* ── 채우기 핸들 (자동 채우기) ── */
 $('shFillHandle').addEventListener('mousedown', e=>{
   e.preventDefault(); e.stopPropagation();
+  commitPendingEdit();
   shFillDragging = true; shFillTarget = null;
 });
 function updateFillPreview(r,c){
@@ -2570,7 +2653,7 @@ function updateFillPreview(r,c){
   shFillTarget = tgt;
   if(!tgt) return;
   for(let rr=tgt.r1; rr<=tgt.r2; rr++) for(let cc=tgt.c1; cc<=tgt.c2; cc++){
-    const td=sheetTb.querySelector(`td[data-r="${rr}"][data-c="${cc}"]`); if(td) td.classList.add('fsel');
+    const td=cellEl(rr,cc); if(td) td.classList.add('fsel');
   }
 }
 function seriesNext(vals, k){
@@ -2622,25 +2705,28 @@ function applyFillDrag(){
   if(!t) return;
   const {r1,c1,r2,c2} = selRange();
   pushUndo();
+  beginBatch();
   if(t.dir==='down') fillCells(r1,c1,r2,c2,'down', t.r2-r2);
   else fillCells(r1,c1,r2,c2,'right', t.c2-c2);
+  endBatch();
   ancR=r1; ancC=c1; selR=t.r2; selC=t.c2;
   renderSheet();
 }
 /* Ctrl+D / Ctrl+R: 선택 범위 안에서 첫 행/열을 아래·오른쪽으로 채움 */
 function fillDownSel(){
   const {r1,c1,r2,c2} = selRange(); if(r2===r1) return;
-  pushUndo(); fillCells(r1,c1,r1,c2,'down', r2-r1); renderSheet();
+  pushUndo(); beginBatch(); fillCells(r1,c1,r1,c2,'down', r2-r1); endBatch(); renderSheet();
 }
 function fillRightSel(){
   const {r1,c1,r2,c2} = selRange(); if(c2===c1) return;
-  pushUndo(); fillCells(r1,c1,r2,c1,'right', c2-c1); renderSheet();
+  pushUndo(); beginBatch(); fillCells(r1,c1,r2,c1,'right', c2-c1); endBatch(); renderSheet();
 }
 
 /* ── 편집 ── */
 function startEdit(r,c,initChar){
+  commitPendingEdit();     /* 다른 칸을 편집 중이었다면 먼저 확정 */
   setSel(r,c,false);
-  const td = sheetTb.querySelector(`td[data-r="${r}"][data-c="${c}"]`);
+  const td = cellEl(r,c);
   if(!td) return;
   td.classList.add('editing');
   const raw = shData[r][c]; const orig = (raw==null)?'':String(raw);
@@ -2649,7 +2735,9 @@ function startEdit(r,c,initChar){
   td.contentEditable = 'true'; td.focus();
   const range=document.createRange(); range.selectNodeContents(td); range.collapse(false);
   const sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
-  const finish = (commit, mr, mc)=>{
+  const finish = (commit, mr, mc, noMove)=>{
+    if(shEditFinish !== finish) return;      /* 이미 마무리됨 */
+    shEditFinish = null;
     td.contentEditable='false'; td.classList.remove('editing');
     td.onblur=td.onkeydown=null;
     if(commit){
@@ -2657,9 +2745,12 @@ function startEdit(r,c,initChar){
       if(v !== orig){ pushUndo(); setCellValue(r,c,v); }
       else recalcRender();
     } else recalcRender();
+    /* noMove: 다른 셀을 마우스로 클릭한 경우 — 입력만 확정하고 선택은 건드리지 않음 */
+    if(noMove) return;
     setSel(Math.max(0,Math.min(shRows-1,r+mr)), Math.max(0,Math.min(shCols-1,c+mc)), false);
     $('sheetScroll').focus();
   };
+  shEditFinish = finish;
   td.onkeydown = ev=>{
     if(ev.key==='Enter'){ ev.preventDefault(); finish(true, ev.shiftKey?-1:1, 0); }
     else if(ev.key==='Escape'){ ev.preventDefault(); finish(false,0,0); }
@@ -2667,6 +2758,56 @@ function startEdit(r,c,initChar){
   };
   td.onblur = ()=>{ if(shRefDrag) return; finish(true,0,0); };
 }
+
+/* ── 새로 늘어난 행만 DOM 에 덧붙임 (전체를 다시 그리지 않아 빠릅니다) ── */
+function appendRowsDOM(fromR){
+  const tb = $('sheetTable');
+  const tbody = tb.tBodies[0];
+  if(!tbody || !shCellEls) { renderSheet(); return; }
+  let html = '';
+  for(let r=fromR;r<shRows;r++){
+    html += `<tr><th data-hr="${r}">${r+1}</th>`;
+    for(let c=0;c<shCols;c++) html += `<td data-r="${r}" data-c="${c}"></td>`;
+    html += '</tr>';
+  }
+  tbody.insertAdjacentHTML('beforeend', html);
+  /* 새 행만 캐시에 등록 */
+  for(let r=fromR;r<shRows;r++){
+    const tr = tbody.rows[r];
+    if(!tr) continue;
+    shHeadRows[r] = tr.cells[0];
+    for(let c=0;c<shCols;c++) shCellEls[r+','+c] = tr.cells[c+1];
+  }
+}
+/* ── 스크롤이 끝에 닿으면 격자를 자동으로 늘림 (엑셀처럼 계속 이어짐) ── */
+const SH_MAX_ROWS = 5000, SH_MAX_COLS = 120;   /* 브라우저가 감당할 수 있는 상한 */
+let shGrowBusy = false;
+$('sheetScroll').addEventListener('scroll', ()=>{
+  if(!sheetReady || shGrowBusy) return;
+  const el = $('sheetScroll');
+  const nearBottom = el.scrollTop + el.clientHeight > el.scrollHeight - 400;
+  const nearRight  = el.scrollLeft + el.clientWidth  > el.scrollWidth  - 400;
+  if(!nearBottom && !nearRight) return;
+  shGrowBusy = true;
+  try{
+    if(nearBottom && shRows < SH_MAX_ROWS){
+      const from = shRows;
+      const add = Math.min(SH_GROW_ROWS, SH_MAX_ROWS - shRows);
+      for(let i=0;i<add;i++) shData.push(Array(shCols).fill(''));
+      shRows += add;
+      appendRowsDOM(from);        /* 새 행만 추가 — 전체 재렌더 없음 */
+    }
+    if(nearRight && shCols < SH_MAX_COLS){
+      const st = el.scrollTop, sl = el.scrollLeft;
+      const add = Math.min(SH_GROW_COLS, SH_MAX_COLS - shCols);
+      shData.forEach(r=>{ for(let i=0;i<add;i++) r.push(''); });
+      for(let i=0;i<add;i++) shColW.push(SH_DEFAULT_W);
+      shCols += add;
+      renderSheet();              /* 열 추가는 전체 구조가 바뀌므로 재렌더 */
+      el.scrollTop = st; el.scrollLeft = sl;
+    }
+  } finally { shGrowBusy = false; }
+});
 
 /* ── Ctrl+화살표: 데이터 끝으로 이동 ── */
 function jumpEdge(dr,dc){
@@ -2719,8 +2860,10 @@ $('sheetScroll').addEventListener('keydown', e=>{
 function clearRange(){
   const {r1,c1,r2,c2} = selRange();
   pushUndo();
+  const many = (r2-r1+1)*(c2-c1+1) > 50;
+  if(many) beginBatch();
   for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++) setCellRaw(r,c,'');
-  recalcRender();
+  if(many){ endBatch(); renderSheet(); } else recalcRender();
 }
 
 /* ── 복사/잘라내기/붙여넣기 (엑셀과 호환: 탭 구분 텍스트) ── */
@@ -2748,6 +2891,7 @@ function doPasteText(text){
   const nR=rows.length, nC=Math.max(...rows.map(r=>r.length));
   pushUndo();
   growTo(selR+nR, selC+nC);
+  beginBatch();
   const internal = shClip && shClip.tsv===text;
   if(internal){
     const {r1,c1,r2,c2,mode,styles} = shClip;
@@ -2772,6 +2916,7 @@ function doPasteText(text){
     for(let r=0;r<nR;r++) for(let c=0;c<rows[r].length;c++) setCellRaw(selR+r, selC+c, rows[r][c]);
     ancR=selR; ancC=selC; selR=selR+nR-1; selC=selC+nC-1;
   }
+  endBatch();
   renderSheet();
   msg(T('mPasted'));
 }
@@ -2853,13 +2998,15 @@ $('fRepAll').onclick = ()=>{
   const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'gi');
   let n=0;
   pushUndo();
+  beginBatch();
   for(let r=0;r<shRows;r++) for(let c=0;c<shCols;c++){
     const raw = String(shData[r][c] ?? '');
     if(raw && re.test(raw)){ re.lastIndex=0; setCellRaw(r,c, raw.replace(re, rep)); n++; }
     re.lastIndex=0;
   }
+  endBatch();
   if(!n) shUndo.pop();
-  recalcRender();
+  renderSheet();
   msg(T('mRepDone').replace('{n}', n));
 };
 
@@ -2883,17 +3030,19 @@ $('shAutoSum').onclick = ()=>{
     renderSheet(); setSel(r1,c2+1,false);
   } else {
     growTo(r2+2, shCols);
+    beginBatch();
     for(let c=c1;c<=c2;c++){
       let any=false; for(let r=r1;r<=r2;r++) if(hasNum(r,c)){ any=true; break; }
       if(any) setCellRaw(r2+1, c, `=SUM(${rangeRef(r1,c,r2,c)})`);
     }
+    endBatch();
     renderSheet(); setSel(r2+1,c1,false);
   }
   msg(T('mAutoSum'));
 };
 
 /* ── 행/열 추가·삽입·삭제 ── */
-$('shAddRow').onclick = ()=>{ pushUndo(); shData.push(Array(shCols).fill('')); shRows++; buildHF(); renderSheet(); };
+$('shAddRow').onclick = ()=>{ pushUndo(); const from=shRows; shData.push(Array(shCols).fill('')); shRows++; appendRowsDOM(from); };
 $('shAddCol').onclick = ()=>{ pushUndo(); shData.forEach(r=>r.push('')); shColW.push(SH_DEFAULT_W); shCols++; buildHF(); renderSheet(); };
 function remapStyles(fn){
   const out={};
@@ -2961,11 +3110,16 @@ $('shNew').onclick = async ()=>{
   if(shData && shData.some(r=>r.some(c=>c!=='' && c!=null))){
     if(!await askConfirm(T('cfNewSheet'))) return;
   }
-  shRows=30; shCols=12; shData=Array.from({length:shRows},()=>Array(shCols).fill('')); shStyle={};
+  shRows=SH_ROWS_INIT; shCols=SH_COLS_INIT; shData=Array.from({length:shRows},()=>Array(shCols).fill('')); shStyle={};
   shColW = Array(shCols).fill(SH_DEFAULT_W);
   shUndo=[]; shRedo=[]; shClip=null; shMerges=[];
   buildHF(); selR=0; selC=0; ancR=0; ancC=0; renderSheet(); msg(T('mNewSheet'));
 };
+
+/* 툴바의 어떤 버튼을 눌러도 편집 중이던 값이 먼저 저장되도록 */
+document.querySelectorAll('#tbSheet button').forEach(b=>{
+  b.addEventListener('mousedown', ()=>{ commitPendingEdit(); });
+});
 
 /* ── 셀 병합/해제 ── */
 $('shMerge').onclick = async ()=>{
@@ -2983,8 +3137,10 @@ $('shMerge').onclick = async ()=>{
   /* 겹치는 기존 병합 제거 */
   shMerges = shMerges.filter(m=> m.r+m.rs-1<r1 || m.r>r2 || m.c+m.cs-1<c1 || m.c>c2);
   /* 왼쪽 위 값만 유지 */
+  beginBatch();
   for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++)
     if(r!==r1 || c!==c1) setCellRaw(r,c,'');
+  endBatch();
   shMerges.push({r:r1, c:c1, rs:r2-r1+1, cs:c2-c1+1});
   ancR=r1; ancC=c1; selR=r1; selC=c1;
   renderSheet(); msg(T('mMerged'));
@@ -3017,7 +3173,7 @@ function applyStyle(prop, val){
   const actSt = shStyle[cellKey(selR,selC)] || {};
   const toggleTo = !actSt[prop];
   for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++){
-    const k=cellKey(r,c);
+    const k=cellKey(r,c); shLive.add(k);
     shStyle[k] = shStyle[k] || {};
     if(prop==='bold'||prop==='italic'||prop==='under') shStyle[k][prop] = toggleTo;
     else shStyle[k][prop] = val;
@@ -3033,7 +3189,7 @@ function applyColorLive(prop, val){
   const {r1,c1,r2,c2} = selRange();
   if(!shColorSession){ pushUndo(); shColorSession = true; }
   for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++){
-    const k=cellKey(r,c); shStyle[k]=shStyle[k]||{}; shStyle[k][prop]=val;
+    const k=cellKey(r,c); shLive.add(k); shStyle[k]=shStyle[k]||{}; shStyle[k][prop]=val;
   }
   recalcRender();
 }
@@ -3049,7 +3205,7 @@ function applyNumFmt(fn){
   const {r1,c1,r2,c2} = selRange();
   pushUndo();
   for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++){
-    const k=cellKey(r,c); shStyle[k]=shStyle[k]||{}; fn(shStyle[k]);
+    const k=cellKey(r,c); shLive.add(k); shStyle[k]=shStyle[k]||{}; fn(shStyle[k]);
   }
   recalcRender();
 }
@@ -3188,12 +3344,14 @@ async function buildPivot(u, rf, cf, vf, agg){
   if(overlap && !await askConfirm(T('cfPivotOverwrite'))) return;
   pushUndo();
   growTo(pr+out.length, pc+Math.max(...out.map(r=>r.length)));
+  beginBatch();
   out.forEach((line,r)=> line.forEach((v,c)=>{
     setCellRaw(pr+r, pc+c, v==null?'':String(v));
     const k=cellKey(pr+r,pc+c);
     if(r===0 || c===0 || r===out.length-1){ shStyle[k]={...(shStyle[k]||{}), bold:true, bg:(r===0?'#E8EEF7':(shStyle[k]||{}).bg)}; }
     else delete shStyle[k];
   }));
+  endBatch();
   renderSheet();
   ancR=pr; ancC=pc; setSel(pr,pc,true);
   msg(T('mPivotDone'));
@@ -3214,7 +3372,7 @@ $('fileSheetOpen').onchange = e=>{
       /* 수식 보존: raw 셀에서 f(수식) 우선, 없으면 값 */
       const ref = XLSX.utils.decode_range(ws['!ref']||'A1');
       const nR = ref.e.r+1, nC = ref.e.c+1;
-      shRows = Math.max(30, nR); shCols = Math.max(12, nC);
+      shRows = Math.max(SH_ROWS_INIT, nR + 50); shCols = Math.max(SH_COLS_INIT, nC + 5);
       shData = Array.from({length:shRows},()=>Array(shCols).fill(''));
       shStyle = {};
       shColW = Array(shCols).fill(SH_DEFAULT_W);
@@ -3520,6 +3678,533 @@ $('d3SaveDxf').onclick = async ()=>{
   await download(new Blob([out.join('\r\n')],{type:'application/dxf'}), asciiOnly(d3FileName)+'.dxf');
   msg(T('m3dDxfDone'));
 };
+
+
+/* ═══════════════ 설명서 ═══════════════ */
+const HELP_CONTENT = {
+  ko: [
+    {
+      id:'start', label:'시작하기',
+      html:`
+<h4>DeskHaus란?</h4>
+<p>설치나 계정 없이 브라우저에서 바로 실행되는 <b>HTML 파일 하나짜리 사무 도구</b>입니다.<br>
+글·그림·표·PDF·PPT·3D 도면을 한 화면에서 처리하며, 모든 파일은 내 컴퓨터에만 존재합니다.</p>
+<h4>시작 방법</h4>
+<ul>
+  <li><b>index.html</b> 파일을 내려받아 브라우저(크롬·엣지·파이어폭스)로 엽니다.</li>
+  <li>상단 탭에서 원하는 모드를 선택합니다.</li>
+  <li>처음 사용 시 라이브러리(계산 엔진, PDF 도구 등)를 CDN에서 자동으로 받아오므로 <b>인터넷 연결</b>이 필요합니다.</li>
+</ul>
+<h4>언어 전환</h4>
+<p>오른쪽 상단 <span class="tag">EN</span> 버튼으로 한국어 ↔ English를 즉시 전환할 수 있습니다.</p>`
+    },
+    {
+      id:'doc', label:'📝 글',
+      html:`
+<h4>주요 기능</h4>
+<ul>
+  <li>A4 페이지 위에서 서식 있는 글쓰기 — 머리글·본문·목록·표·이미지 삽입</li>
+  <li>로고·이름·연락처가 들어간 <b>레터헤드</b> 설정 (상단 편집 후 접어두기 가능)</li>
+  <li>이미지를 더블클릭하면 <b>그림 모드</b>로 이동해 편집 후 다시 문서에 적용</li>
+</ul>
+<h4>열기 / 저장</h4>
+<ul>
+  <li>열기: <span class="tag">.docx</span> <span class="tag">.html</span> <span class="tag">.txt</span> <span class="tag">.hwpx</span></li>
+  <li>저장: <b>HTML</b>(레터헤드 포함, 재편집 가능) / <b>Word .docx</b> / <b>텍스트</b></li>
+</ul>
+<h4>표 삽입</h4>
+<p>표 버튼 → 행·열 수 입력 → 삽입. 표 안 클릭 후 <b>행·열 추가·삭제</b>, <b>합계 행·열</b> 버튼 사용 가능.</p>
+<h4>단축키</h4>
+<table><tr><th>단축키</th><th>동작</th></tr>
+<tr><td>Ctrl+B / I / U</td><td>굵게 / 기울임 / 밑줄</td></tr>
+<tr><td>Ctrl+Z / Y</td><td>실행 취소 / 다시 실행</td></tr>
+<tr><td>Ctrl+S</td><td>저장</td></tr>
+<tr><td>Ctrl+P</td><td>인쇄 (PDF 저장 가능)</td></tr>
+</table>`
+    },
+    {
+      id:'img', label:'🖼 그림',
+      html:`
+<h4>레이어 기반 편집기</h4>
+<ul>
+  <li>이미지·텍스트·도형을 <b>레이어</b>로 쌓아 편집합니다.</li>
+  <li>레이어 패널에서 이름 바꾸기·순서 변경·숨기기·삭제 가능</li>
+  <li>요소를 선택 후 <b>드래그</b>로 이동, 모서리 핸들로 크기 조절</li>
+</ul>
+<h4>이미지 추가 방법</h4>
+<ul>
+  <li>툴바의 <b>이미지 추가</b> 버튼 또는 캔버스에 <b>드래그 앤 드롭</b></li>
+  <li>글 모드에서 이미지 더블클릭 → 그림 모드로 편집 → <b>문서에 적용</b></li>
+  <li>PDF 페이지를 그림 모드로 가져와 편집 가능</li>
+</ul>
+<h4>저장</h4>
+<p>PNG·JPEG·WebP로 내보내거나, <b>문서에 적용</b>으로 글 모드에 다시 넣을 수 있습니다.</p>`
+    },
+    {
+      id:'sheet', label:'📊 표(스프레드시트)',
+      html:`
+<h4>기본 조작</h4>
+<ul>
+  <li>셀을 <b>클릭</b>해 선택, <b>더블클릭</b>하거나 키보드 입력으로 편집</li>
+  <li><b>드래그</b> / Shift+클릭·화살표로 범위 선택 → 오른쪽 상단에 합계·평균·개수 표시</li>
+  <li>수식 입력줄(상단)에서 바로 입력·수정 가능</li>
+</ul>
+<h4>수식</h4>
+<p>셀에 <span class="tag">=</span>으로 시작하면 수식으로 인식됩니다.</p>
+<ul>
+  <li><code>=A1+B1</code> / <code>=SUM(A1:A10)</code> / <code>=AVERAGE(B2:B20)</code></li>
+  <li>수식 입력 중 다른 셀을 클릭하거나 드래그하면 참조(<code>A1</code>, <code>A1:B5</code>)가 자동 삽입됩니다.</li>
+  <li><b>Σ 자동합계</b>: 범위 선택 후 Σ 버튼 클릭 — 알맞은 SUM 수식을 자동 삽입</li>
+</ul>
+<h4>자동 채우기</h4>
+<p>선택 범위 오른쪽 하단 모서리의 <b>■ 핸들</b>을 드래그 — 숫자는 등차수열, 수식은 참조 이동.</p>
+<h4>단축키</h4>
+<table><tr><th>단축키</th><th>동작</th></tr>
+<tr><td>Ctrl+C / X / V</td><td>복사 / 잘라내기 / 붙여넣기 (엑셀과 호환)</td></tr>
+<tr><td>Ctrl+Z / Y</td><td>실행 취소 / 다시 실행</td></tr>
+<tr><td>Ctrl+F / H</td><td>찾기 / 찾기·바꾸기</td></tr>
+<tr><td>Ctrl+D / R</td><td>아래로 / 오른쪽으로 채우기</td></tr>
+<tr><td>Ctrl+화살표</td><td>데이터 끝으로 점프</td></tr>
+<tr><td>Ctrl+A</td><td>전체 선택</td></tr>
+<tr><td>F2</td><td>셀 편집 모드</td></tr>
+<tr><td>Delete</td><td>선택 범위 지우기</td></tr>
+</table>
+<h4>셀 병합</h4>
+<p>범위 선택 → <b>병합</b> 버튼. 같은 범위를 다시 선택하고 병합 버튼을 누르면 해제됩니다.</p>
+<h4>피벗 테이블</h4>
+<p>데이터 범위 선택 → <b>피벗</b> 버튼 → 행/열/값 필드와 계산 방식 선택 → 현재 셀 위치에 피벗 표 생성.</p>
+<h4>열기 / 저장</h4>
+<ul>
+  <li>열기: <span class="tag">.xlsx</span> <span class="tag">.xls</span> <span class="tag">.csv</span></li>
+  <li>저장: <b>엑셀(.xlsx)</b> / <b>CSV</b> / 글 모드에 표로 삽입</li>
+</ul>`
+    },
+    {
+      id:'pdf', label:'📄 PDF',
+      html:`
+<h4>주요 기능</h4>
+<ul>
+  <li><b>PDF 열기</b>: 파일을 열어 페이지별로 탐색·확대</li>
+  <li><b>PDF 이어붙이기</b>: 현재 PDF 뒤에 다른 PDF를 합칩니다</li>
+  <li><b>페이지 삭제</b>: 현재 페이지를 제거 (저장 전까지 원본 파일에 영향 없음)</li>
+  <li><b>이 페이지 → 그림</b>: 현재 페이지를 그림 모드로 가져와 편집</li>
+  <li><b>현재 페이지 PNG 저장</b>: 페이지를 이미지로 내보내기</li>
+</ul>
+<h4>저장</h4>
+<ul>
+  <li><b>이 페이지만 PDF 저장</b>: 현재 페이지 하나만 PDF로</li>
+  <li><b>전체 PDF 저장</b>: 편집된 전체 파일 저장</li>
+</ul>`
+    },
+    {
+      id:'ppt', label:'📽 PPT',
+      html:`
+<h4>기본 조작</h4>
+<ul>
+  <li>슬라이드 목록(왼쪽)에서 슬라이드를 클릭해 이동·선택</li>
+  <li>요소를 <b>드래그</b>로 이동, 모서리로 크기 조절, <b>더블클릭</b>으로 텍스트 편집</li>
+  <li>선택 후 <b>Delete</b>로 삭제</li>
+</ul>
+<h4>요소 추가</h4>
+<ul>
+  <li>텍스트·제목·도형(사각·원·선)·이미지 추가 버튼</li>
+  <li>슬라이드 레이아웃 선택(빈 슬라이드·제목·제목+내용)</li>
+</ul>
+<h4>프레젠테이션</h4>
+<ul>
+  <li><b>슬라이드쇼</b>: 전체화면 발표 모드. 화살표 키나 클릭으로 진행</li>
+  <li><b>발표자 노트</b>: 슬라이드 아래 노트 입력 영역 사용</li>
+</ul>
+<h4>열기 / 저장</h4>
+<ul>
+  <li>열기·저장: <span class="tag">.pptx</span></li>
+</ul>`
+    },
+    {
+      id:'d3', label:'🧊 3D(STEP)',
+      html:`
+<h4>지원 파일</h4>
+<p><span class="tag">.step</span> <span class="tag">.stp</span> — CAD 표준 형식. AutoCAD·SolidWorks·Fusion 360 등 대부분의 캐드 소프트웨어에서 내보내기 가능합니다.</p>
+<p>⚠️ STEP 판독 모듈(약 10MB)은 처음 사용 시 한 번 자동 다운로드됩니다.</p>
+<h4>뷰어 조작</h4>
+<table><tr><th>조작</th><th>동작</th></tr>
+<tr><td>왼쪽 드래그</td><td>모델 회전</td></tr>
+<tr><td>마우스 휠</td><td>확대·축소</td></tr>
+<tr><td>오른쪽 드래그 또는 Shift+드래그</td><td>이동(패닝)</td></tr>
+<tr><td>정면·윗면·우측·입체 버튼</td><td>시점 전환</td></tr>
+<tr><td>화면 맞춤</td><td>모델이 화면에 꽉 차게</td></tr>
+<tr><td>면/선</td><td>솔리드 ↔ 와이어프레임 전환</td></tr>
+</table>
+<h4>내보내기</h4>
+<ul>
+  <li><b>PDF 도면 저장</b>: 정면·윗면·우측·등각 4면도가 담긴 A4 도면 PDF</li>
+  <li><b>DXF 저장</b>: AutoCAD 등 캐드에서 열 수 있는 DXF 파일.<br>캐드에서 "다른 이름으로 저장 → .dwg"를 선택하면 DWG로 변환됩니다.</li>
+</ul>`
+    },
+    {
+      id:'tips', label:'💡 팁 & 단축키',
+      html:`
+<h4>전체 공통</h4>
+<table><tr><th>단축키</th><th>동작</th></tr>
+<tr><td>Ctrl+Z / Y</td><td>실행 취소 / 다시 실행</td></tr>
+<tr><td>Ctrl+S</td><td>저장(글 모드)</td></tr>
+<tr><td>Ctrl+P</td><td>인쇄 / PDF 저장(글 모드)</td></tr>
+</table>
+<h4>표(스프레드시트) 전체 단축키</h4>
+<table><tr><th>단축키</th><th>동작</th></tr>
+<tr><td>화살표 / Enter / Tab</td><td>셀 이동</td></tr>
+<tr><td>Shift+방향키·클릭</td><td>범위 선택 확장</td></tr>
+<tr><td>Ctrl+방향키</td><td>데이터 끝으로 점프</td></tr>
+<tr><td>Ctrl+A</td><td>전체 선택</td></tr>
+<tr><td>F2 / 더블클릭</td><td>셀 편집</td></tr>
+<tr><td>Ctrl+C / X / V</td><td>복사 / 잘라내기 / 붙여넣기</td></tr>
+<tr><td>Ctrl+Z / Y</td><td>실행 취소 / 다시 실행</td></tr>
+<tr><td>Ctrl+D / R</td><td>아래로 / 오른쪽으로 채우기</td></tr>
+<tr><td>Ctrl+B / I / U</td><td>굵게 / 기울임 / 밑줄</td></tr>
+<tr><td>Ctrl+F / H</td><td>찾기 / 바꾸기</td></tr>
+<tr><td>Delete</td><td>선택 지우기</td></tr>
+</table>
+<h4>엑셀 호환 팁</h4>
+<ul>
+  <li>엑셀에서 셀 범위를 복사(Ctrl+C) → DeskHaus 표에서 붙여넣기(Ctrl+V) — 바로 됩니다.</li>
+  <li>반대로 DeskHaus 표를 복사해 엑셀에 붙여넣는 것도 됩니다.</li>
+  <li>.xlsx 저장 시 수식·서식·병합이 모두 포함됩니다.</li>
+</ul>
+<h4>파일이 저장되지 않을 때</h4>
+<ul>
+  <li>크롬·엣지: "다른 이름으로 저장" 창이 자동으로 열립니다.</li>
+  <li>그 외 브라우저: 파일 이름을 입력하는 창이 나타난 후 다운로드 폴더에 저장됩니다.</li>
+</ul>`
+    }
+  ],
+  en: [
+    {
+      id:'start', label:'Getting Started',
+      html:`
+<h4>What is DeskHaus?</h4>
+<p>A <b>single HTML file</b> that runs as a full office suite directly in your browser — no installation, no account, no server. Write documents, edit images, calculate in spreadsheets, handle PDFs, build slides, and view 3D CAD models, all in one place. Your files never leave your computer.</p>
+<h4>How to start</h4>
+<ul>
+  <li>Download <b>index.html</b> and open it in a modern browser (Chrome, Edge, Firefox).</li>
+  <li>Choose a mode from the tabs at the top.</li>
+  <li>An <b>internet connection</b> is required the first time — libraries are loaded from a CDN and cached afterwards.</li>
+</ul>
+<h4>Switch language</h4>
+<p>Click the <span class="tag">EN</span> button at the top right to toggle between Korean and English.</p>`
+    },
+    {
+      id:'doc', label:'📝 Text',
+      html:`
+<h4>Features</h4>
+<ul>
+  <li>Rich text editing on an A4 page — headings, lists, tables, images</li>
+  <li>Personal <b>letterhead</b> with logo, name, and contact info (collapsible)</li>
+  <li>Double-click an image to edit it in Image mode, then apply it back</li>
+</ul>
+<h4>Open / Save</h4>
+<ul>
+  <li>Open: <span class="tag">.docx</span> <span class="tag">.html</span> <span class="tag">.txt</span> <span class="tag">.hwpx</span></li>
+  <li>Save: <b>HTML</b> (with letterhead, re-editable) / <b>Word .docx</b> / <b>Text</b></li>
+</ul>
+<h4>Shortcuts</h4>
+<table><tr><th>Shortcut</th><th>Action</th></tr>
+<tr><td>Ctrl+B / I / U</td><td>Bold / Italic / Underline</td></tr>
+<tr><td>Ctrl+Z / Y</td><td>Undo / Redo</td></tr>
+<tr><td>Ctrl+S</td><td>Save</td></tr>
+<tr><td>Ctrl+P</td><td>Print (save as PDF)</td></tr>
+</table>`
+    },
+    {
+      id:'img', label:'🖼 Image',
+      html:`
+<h4>Layer-based editor</h4>
+<ul>
+  <li>Stack images, text, and shapes as <b>layers</b></li>
+  <li>Rename, reorder, hide, or delete layers in the panel</li>
+  <li><b>Drag</b> to move, corner handles to resize</li>
+</ul>
+<h4>Adding images</h4>
+<ul>
+  <li>Toolbar button or <b>drag & drop</b> onto the canvas</li>
+  <li>Double-click an image in Text mode → edit → <b>Apply to document</b></li>
+  <li>Import a PDF page for markup</li>
+</ul>
+<h4>Export</h4>
+<p>Export as PNG, JPEG, or WebP, or send back to the Text document.</p>`
+    },
+    {
+      id:'sheet', label:'📊 Sheet',
+      html:`
+<h4>Basics</h4>
+<ul>
+  <li><b>Click</b> to select, <b>double-click</b> or type to edit</li>
+  <li><b>Drag</b> / Shift+click or arrows to select a range — sum, avg, count shown top-right</li>
+</ul>
+<h4>Formulas</h4>
+<p>Start with <span class="tag">=</span> to enter a formula.</p>
+<ul>
+  <li><code>=A1+B1</code> / <code>=SUM(A1:A10)</code> / <code>=AVERAGE(B2:B20)</code></li>
+  <li>While typing a formula, <b>click or drag cells</b> to insert references automatically</li>
+  <li><b>Σ AutoSum</b>: select a range and click Σ to insert the right SUM formula</li>
+</ul>
+<h4>Auto-fill</h4>
+<p>Drag the <b>■ handle</b> at the bottom-right of a selection — numbers extend as a series, formulas shift their references.</p>
+<h4>Shortcuts</h4>
+<table><tr><th>Shortcut</th><th>Action</th></tr>
+<tr><td>Ctrl+C / X / V</td><td>Copy / Cut / Paste (Excel-compatible)</td></tr>
+<tr><td>Ctrl+Z / Y</td><td>Undo / Redo</td></tr>
+<tr><td>Ctrl+F / H</td><td>Find / Find & Replace</td></tr>
+<tr><td>Ctrl+D / R</td><td>Fill down / Fill right</td></tr>
+<tr><td>Ctrl+Arrow</td><td>Jump to edge of data</td></tr>
+<tr><td>Ctrl+A</td><td>Select all</td></tr>
+<tr><td>F2</td><td>Edit cell</td></tr>
+<tr><td>Delete</td><td>Clear selection</td></tr>
+</table>
+<h4>Merge cells</h4>
+<p>Select a range → click <b>Merge</b>. Select the same range again and click Merge to unmerge.</p>
+<h4>Pivot table</h4>
+<p>Select data → click <b>Pivot</b> → choose row / column / value fields and aggregate → pivot table is placed at the active cell.</p>
+<h4>Open / Save</h4>
+<ul>
+  <li>Open: <span class="tag">.xlsx</span> <span class="tag">.xls</span> <span class="tag">.csv</span></li>
+  <li>Save: <b>Excel (.xlsx)</b> / <b>CSV</b> / Insert as table in Text mode</li>
+</ul>`
+    },
+    {
+      id:'pdf', label:'📄 PDF',
+      html:`
+<h4>Features</h4>
+<ul>
+  <li><b>Open PDF</b>: browse and zoom through pages</li>
+  <li><b>Append PDF</b>: merge another PDF at the end</li>
+  <li><b>Delete page</b>: remove the current page (original untouched until saved)</li>
+  <li><b>Page → Image</b>: bring the current page into Image mode for markup</li>
+  <li><b>Save page as PNG</b>: export the current page as an image</li>
+</ul>
+<h4>Save</h4>
+<ul>
+  <li><b>Save this page as PDF</b>: single-page PDF</li>
+  <li><b>Save whole PDF</b>: save the edited file</li>
+</ul>`
+    },
+    {
+      id:'ppt', label:'📽 Slides',
+      html:`
+<h4>Basics</h4>
+<ul>
+  <li>Click a slide in the list (left) to navigate</li>
+  <li><b>Drag</b> elements to move, corner handles to resize, <b>double-click</b> to edit text</li>
+  <li>Select and press <b>Delete</b> to remove</li>
+</ul>
+<h4>Adding elements</h4>
+<ul>
+  <li>Text, title, shapes (rectangle, circle, line), and image buttons in the toolbar</li>
+  <li>Slide layouts: blank, title, title + content</li>
+</ul>
+<h4>Presenting</h4>
+<ul>
+  <li><b>Slideshow</b>: full-screen mode. Arrow keys or click to advance</li>
+  <li><b>Speaker notes</b>: note area below the slide canvas</li>
+</ul>
+<h4>Open / Save</h4>
+<ul><li><span class="tag">.pptx</span></li></ul>`
+    },
+    {
+      id:'d3', label:'🧊 3D (STEP)',
+      html:`
+<h4>Supported files</h4>
+<p><span class="tag">.step</span> <span class="tag">.stp</span> — the universal CAD exchange format. Exportable from AutoCAD, SolidWorks, Fusion 360, and most CAD tools.</p>
+<p>⚠️ The STEP reader (~10 MB WebAssembly) downloads automatically on first use.</p>
+<h4>Navigation</h4>
+<table><tr><th>Input</th><th>Action</th></tr>
+<tr><td>Left drag</td><td>Rotate</td></tr>
+<tr><td>Scroll wheel</td><td>Zoom</td></tr>
+<tr><td>Right drag / Shift+drag</td><td>Pan</td></tr>
+<tr><td>Front / Top / Right / Iso buttons</td><td>Switch view</td></tr>
+<tr><td>Fit view</td><td>Zoom to fit model</td></tr>
+<tr><td>Faces/wire</td><td>Toggle solid ↔ wireframe</td></tr>
+</table>
+<h4>Export</h4>
+<ul>
+  <li><b>Save PDF drawing</b>: A4 sheet with Front, Top, Right, and Isometric views</li>
+  <li><b>Save DXF</b>: open in AutoCAD or any CAD app, then "Save As → .dwg" to convert to DWG</li>
+</ul>`
+    },
+    {
+      id:'tips', label:'💡 Tips & Shortcuts',
+      html:`
+<h4>Universal</h4>
+<table><tr><th>Shortcut</th><th>Action</th></tr>
+<tr><td>Ctrl+Z / Y</td><td>Undo / Redo</td></tr>
+<tr><td>Ctrl+S</td><td>Save (Text mode)</td></tr>
+<tr><td>Ctrl+P</td><td>Print / Save as PDF (Text mode)</td></tr>
+</table>
+<h4>All Sheet shortcuts</h4>
+<table><tr><th>Shortcut</th><th>Action</th></tr>
+<tr><td>Arrows / Enter / Tab</td><td>Move cell</td></tr>
+<tr><td>Shift+arrow / click</td><td>Extend selection</td></tr>
+<tr><td>Ctrl+Arrow</td><td>Jump to data edge</td></tr>
+<tr><td>Ctrl+A</td><td>Select all</td></tr>
+<tr><td>F2 / double-click</td><td>Edit cell</td></tr>
+<tr><td>Ctrl+C / X / V</td><td>Copy / Cut / Paste</td></tr>
+<tr><td>Ctrl+Z / Y</td><td>Undo / Redo</td></tr>
+<tr><td>Ctrl+D / R</td><td>Fill down / right</td></tr>
+<tr><td>Ctrl+B / I / U</td><td>Bold / Italic / Underline</td></tr>
+<tr><td>Ctrl+F / H</td><td>Find / Replace</td></tr>
+<tr><td>Delete</td><td>Clear selection</td></tr>
+</table>
+<h4>Excel compatibility tips</h4>
+<ul>
+  <li>Copy cells from Excel (Ctrl+C) → paste into DeskHaus (Ctrl+V). Works both ways.</li>
+  <li>.xlsx export includes formulas, styles, and merged cells.</li>
+</ul>`
+    }
+  ]
+};
+
+/* 설명서를 새 탭(별도 화면)으로 엽니다 — 작업 화면을 가리지 않습니다 */
+function buildHelpDoc(){
+  const sec = (lang)=> HELP_CONTENT[lang].map((s,i)=>
+    `<section id="${lang}-${s.id}" class="hsec${i===0?' on':''}">${s.html}</section>`).join('');
+  const nav = (lang)=> HELP_CONTENT[lang].map((s,i)=>
+    `<button data-t="${lang}-${s.id}"${i===0?' class="on"':''}>${s.label}</button>`).join('');
+  const T2 = {
+    ko:{ title:'DeskHaus 사용 설명서', sub:'하나로 쓰는 사무 도구 · 사용 안내', print:'인쇄 / PDF 저장', other:'English',
+         home:'← 작업 화면', homeT:'클릭하면 DeskHaus 작업 화면으로 돌아갑니다',
+         gone:'DeskHaus 작업 화면을 찾을 수 없습니다. 원래 창이 닫힌 것 같습니다.\n이 탭을 닫고 index.html 을 다시 열어 주세요.' },
+    en:{ title:'DeskHaus User Guide', sub:'One tool for everyday office work · Documentation', print:'Print / Save PDF', other:'한국어',
+         home:'← Back to app', homeT:'Click to return to the DeskHaus workspace',
+         gone:'The DeskHaus workspace could not be found — the original window seems to be closed.\nPlease close this tab and open index.html again.' }
+  };
+  return `<!DOCTYPE html><html lang="${LANG}"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${T2[LANG].title}</title>
+<style>
+:root{--bg:#EDEFF2;--panel:#FFF;--ink:#22262B;--muted:#6B7482;--line:#D9DDE3;--accent:#1F4E8C;--accent-soft:#E8EEF7;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI','Malgun Gothic','Apple SD Gothic Neo',sans-serif;background:var(--bg);color:var(--ink);font-size:14.5px;line-height:1.75;}
+header{background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10;}
+.hinner{max-width:1150px;margin:0 auto;padding:16px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+#hpHome{display:flex;align-items:center;gap:14px;text-decoration:none;color:inherit;cursor:pointer;
+  padding:6px 10px;margin:-6px -10px;border-radius:9px;transition:background .12s;}
+#hpHome:hover{background:var(--accent-soft);}
+#hpHome:hover h1{color:var(--accent);}
+#hpHome:hover .mark{background:#173D70;}
+.mark{width:34px;height:34px;border-radius:9px;background:var(--accent);color:#fff;font-weight:700;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+header h1{font-size:18px;font-weight:700;}
+header p{font-size:12.5px;color:var(--muted);}
+.hbtns{margin-left:auto;display:flex;gap:8px;flex-shrink:0;}
+.hbtns button{font-family:inherit;font-size:13px;padding:7px 14px;border:1px solid var(--line);background:#fff;border-radius:7px;cursor:pointer;color:var(--ink);white-space:nowrap;}
+.hbtns button:hover{border-color:var(--accent);color:var(--accent);}
+#hpHomeBtn{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+#hpHomeBtn:hover{background:#173D70;color:#fff;border-color:#173D70;}
+.wrap{display:flex;max-width:1150px;margin:0 auto;padding:26px 24px 60px;gap:28px;align-items:flex-start;}
+nav{width:190px;flex-shrink:0;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 0;position:sticky;top:96px;}
+nav button{display:block;width:100%;text-align:left;padding:10px 16px;border:none;background:none;font-family:inherit;font-size:13.5px;color:var(--muted);cursor:pointer;border-left:3px solid transparent;}
+nav button:hover{color:var(--ink);background:#F2F4F7;}
+nav button.on{color:var(--accent);font-weight:600;border-left-color:var(--accent);background:var(--accent-soft);}
+main{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:30px 36px;min-height:520px;}
+.hsec{display:none;}
+.hsec.on{display:block;}
+.lang{display:none;}
+.lang.on{display:block;}
+h4{font-size:15.5px;font-weight:700;color:var(--accent);margin:26px 0 8px;border-bottom:1px solid var(--line);padding-bottom:6px;}
+h4:first-child{margin-top:0;}
+ul{padding-left:20px;margin:6px 0 14px;}
+li{margin-bottom:5px;}
+p{margin:6px 0 14px;}
+code{background:#F1F3F6;border:1px solid var(--line);border-radius:4px;padding:1px 6px;font-size:13px;font-family:Consolas,Monaco,monospace;color:#1F4E8C;}
+table{border-collapse:collapse;width:100%;margin:10px 0 18px;font-size:13.5px;}
+th{background:var(--accent-soft);color:var(--accent);padding:8px 12px;text-align:left;font-weight:600;border:1px solid var(--line);}
+td{padding:7px 12px;border:1px solid var(--line);}
+tr:nth-child(even) td{background:#F8FAFC;}
+.tag{display:inline-block;background:var(--accent-soft);color:var(--accent);border-radius:5px;padding:2px 8px;font-size:12.5px;font-weight:600;margin:0 2px;}
+footer{text-align:center;color:var(--muted);font-size:12px;padding:0 0 40px;}
+@media print{header,nav,.hbtns,footer{display:none!important;}
+ .wrap{display:block;padding:0;max-width:none;} main{border:none;padding:0;}
+ .hsec{display:block!important;page-break-after:always;}}
+@media (max-width:760px){.wrap{flex-direction:column;}nav{width:100%;position:static;}}
+</style></head><body>
+<header>
+  <div class="hinner">
+    <a id="hpHome" href="#" title="${T2[LANG].homeT}" role="button">
+      <div class="mark">DH</div>
+      <div><h1 id="hTitle">${T2[LANG].title}</h1><p id="hSub">${T2[LANG].sub}</p></div>
+    </a>
+    <div class="hbtns">
+      <button id="hpHomeBtn">${T2[LANG].home}</button>
+      <button id="hpLang">${T2[LANG].other}</button>
+      <button id="hpPrint">${T2[LANG].print}</button>
+    </div>
+  </div>
+</header>
+<div class="wrap">
+  <nav>
+    <div class="lang on" data-l="ko" style="display:${LANG==='ko'?'block':'none'}">${nav('ko')}</div>
+    <div class="lang" data-l="en" style="display:${LANG==='en'?'block':'none'}">${nav('en')}</div>
+  </nav>
+  <main>
+    <div class="lang" data-l="ko" style="display:${LANG==='ko'?'block':'none'}">${sec('ko')}</div>
+    <div class="lang" data-l="en" style="display:${LANG==='en'?'block':'none'}">${sec('en')}</div>
+  </main>
+</div>
+<footer>DeskHaus · ${new Date().getFullYear()}</footer>
+<script>
+var LG = ${JSON.stringify(LANG)};
+var TT = ${JSON.stringify(T2)};
+function setLang(l){
+  LG = l;
+  document.querySelectorAll('.lang').forEach(function(d){ d.style.display = (d.dataset.l===l)?'block':'none'; });
+  document.getElementById('hTitle').textContent = TT[l].title;
+  document.getElementById('hSub').textContent = TT[l].sub;
+  document.getElementById('hpLang').textContent = TT[l].other;
+  document.getElementById('hpPrint').textContent = TT[l].print;
+  document.getElementById('hpHomeBtn').textContent = TT[l].home;
+  document.getElementById('hpHome').title = TT[l].homeT;
+  document.title = TT[l].title;
+  document.documentElement.lang = l;
+}
+/* 홈으로 — 원래 작업 화면 탭을 앞으로 가져오고 이 설명서 탭은 닫습니다 */
+function goHome(e){
+  if(e) e.preventDefault();
+  var op = null;
+  try{ op = window.opener; }catch(err){}
+  if(op && !op.closed){
+    try{ op.focus(); }catch(err){}
+    window.close();
+    /* 브라우저가 닫기를 막은 경우엔 그대로 두고 안내만 하지 않습니다 */
+  } else {
+    alert(TT[LG].gone);
+  }
+}
+document.getElementById('hpHome').onclick = goHome;
+document.getElementById('hpHomeBtn').onclick = goHome;
+document.getElementById('hpLang').onclick = function(){ setLang(LG==='ko'?'en':'ko'); };
+document.getElementById('hpPrint').onclick = function(){ window.print(); };
+document.querySelectorAll('nav button').forEach(function(b){
+  b.onclick = function(){
+    var lang = b.dataset.t.split('-')[0];
+    document.querySelectorAll('nav .lang[data-l="'+lang+'"] button').forEach(function(x){ x.classList.remove('on'); });
+    b.classList.add('on');
+    document.querySelectorAll('main .lang[data-l="'+lang+'"] .hsec').forEach(function(s){ s.classList.remove('on'); });
+    var t = document.getElementById(b.dataset.t);
+    if(t) t.classList.add('on');
+    window.scrollTo(0,0);
+  };
+});
+<\/script>
+</body></html>`;
+}
+function openHelp(){
+  try{
+    const blob = new Blob([buildHelpDoc()], {type:'text/html;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const win = window.open(url, '_blank');
+    if(!win){ msg(T('mHelpBlocked')); return; }
+    setTimeout(()=> URL.revokeObjectURL(url), 60000);
+  }catch(e){ msg(T('mHelpBlocked')); }
+}
+$('helpBtn').onclick = openHelp;
 
 /* ═══════════════ PDF 모드 ═══════════════ */
 let pdfDoc = null;        // pdf.js 문서 객체 (렌더링용)

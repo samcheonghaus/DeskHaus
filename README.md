@@ -12,6 +12,8 @@ DeskHaus is a lightweight office suite that runs entirely in your browser from a
 2. Open it in a modern browser (Chrome, Edge, Firefox, Safari)
 3. That's it.
 
+A built-in **user guide** is available any time from the **❓ Help** button in the top right — it opens in a separate browser tab, so it never covers your work, and it has its own Korean/English toggle and a print-to-PDF button.
+
 > An internet connection is required on first use — the libraries (spreadsheet engine, PDF tools, 3D reader, etc.) are loaded from public CDNs and cached by your browser afterwards.
 
 ## Features
@@ -27,6 +29,7 @@ DeskHaus is a lightweight office suite that runs entirely in your browser from a
 - Bring in a PDF page or a document image, edit, and send it back
 
 ### 📊 Sheet — a spreadsheet with real Excel basics
+- **A large working area** — 200 rows × 40 columns (A–AN) to start, and the grid **extends automatically** as you scroll toward the edge
 - **Formulas** powered by HyperFormula: `=A1+B1`, `=SUM(A1:A10)`, `=AVERAGE(...)` and hundreds more
 - **Range selection**: drag, Shift+click, Shift+arrows, header click for whole rows/columns, Ctrl+A
 - **Live selection stats** — sum, average, and count shown as you select, just like Excel's status bar
