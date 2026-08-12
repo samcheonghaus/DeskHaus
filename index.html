@@ -454,6 +454,7 @@
   <div class="sep"></div>
   <button id="btnCrop" data-i18n="btnCrop">자르기</button>
   <button id="btnCanvasSize" data-i18n="btnCanvasSize">캔버스 크기</button>
+  <button id="btnAdjust" data-i18n="btnAdjust">이미지 보정</button>
   <label class="small" data-i18n="lblBg">배경</label>
   <select id="bgSel"><option value="t" data-i18n="optTransparent">투명</option><option value="c" data-i18n="optColor">색상</option></select>
   <input type="color" id="bgColor" value="#FFFFFF" title="배경 색" style="display:none;">
@@ -646,9 +647,14 @@
     <div id="imgWrap">
       <div id="imgToolbox" aria-label="Image tools">
         <button class="imgTool active" data-imgtool="move" data-i18n-title="imgMoveT" title="이동 / 선택 (V)">↖</button>
+        <button class="imgTool" data-imgtool="lasso" data-i18n-title="imgLassoT" title="올가미 선택 (L)">⬠</button>
+        <button class="imgTool" data-imgtool="wand" data-i18n-title="imgWandT" title="마술봉 / 배경제거 (W)">✦</button>
         <button class="imgTool" data-imgtool="brush" data-i18n-title="imgBrushT" title="브러시 (B)">●</button>
         <button class="imgTool" data-imgtool="pencil" data-i18n-title="imgPencilT" title="연필 (N)">✎</button>
+        <button class="imgTool" data-imgtool="clone" data-i18n-title="imgCloneT" title="복제도장 (S)">◫</button>
         <button class="imgTool" data-imgtool="eraser" data-i18n-title="imgEraserT" title="지우개 (E)">▱</button>
+        <button class="imgTool" data-imgtool="blur" data-i18n-title="imgBlurT" title="흐림 (G)">◌</button>
+        <button class="imgTool" data-imgtool="sharpen" data-i18n-title="imgSharpenT" title="선명 (K)">✺</button>
         <button class="imgTool" data-imgtool="eyedropper" data-i18n-title="imgEyedropperT" title="스포이드 (I)">⌾</button>
         <button class="imgTool" data-imgtool="crop" data-i18n-title="imgCropT" title="자르기 (C)">⌗</button>
         <button class="imgTool" data-imgtool="text" data-i18n-title="imgTextT" title="문자 (T)"><b>T</b></button>
@@ -846,6 +852,15 @@
   <div class="btns"><button onclick="dlgCanvas.close()" data-i18n="btnCancel">취소</button><button class="primary" id="cOk" data-i18n="btnApply">적용</button></div>
 </dialog>
 
+<!-- 이미지 보정 대화상자 -->
+<dialog id="dlgAdjust">
+  <h4 data-i18n="dlgAdjustTitle">이미지 보정</h4>
+  <div class="frow"><label data-i18n="lblBrightness">밝기</label><input type="range" id="adjBrightness" min="-100" max="100" value="0"><span id="adjBrightnessVal" class="small">0</span></div>
+  <div class="frow"><label data-i18n="lblContrast">대비</label><input type="range" id="adjContrast" min="-100" max="100" value="0"><span id="adjContrastVal" class="small">0</span></div>
+  <div class="frow"><label data-i18n="lblHue">색조</label><input type="range" id="adjHue" min="-180" max="180" value="0"><span id="adjHueVal" class="small">0°</span></div>
+  <div class="btns"><button id="adjReset" data-i18n="btnReset">초기화</button><button id="adjCancel" data-i18n="btnCancel">취소</button><button class="primary" id="adjApply" data-i18n="btnApply">적용</button></div>
+</dialog>
+
 <script>
 /* ═══════════════ 다국어 (EN / KO) ═══════════════ */
 const I18N = {
@@ -857,16 +872,16 @@ const I18N = {
     btnNewDoc:'새 문서', btnOpenDoc:'열기', btnImportXlsx:'엑셀·CSV 열기',
     btnSaveDoc:'저장', btnPrint:'인쇄 / PDF',
     btnNewCanvas:'새 캔버스', btnAddImg:'이미지 추가', btnAddText:'텍스트 추가',
-    btnCrop:'자르기', btnCanvasSize:'캔버스 크기', lblBg:'배경', lblZoom:'확대', lblFmt:'저장 형식',
+    btnCrop:'자르기', btnCanvasSize:'캔버스 크기', btnAdjust:'이미지 보정', lblBg:'배경', lblZoom:'확대', lblFmt:'저장 형식',
     btnExport:'내보내기', btnApplyDoc:'문서에 적용 ↩',
     layerTitle:'레이어 (위 = 앞)', lblOpacity:'투명도',
     lyUp:'▲ 앞', lyDown:'▼ 뒤', lyDel:'삭제', lyRot:'↻ 회전', lyFlip:'⇋ 반전',
     statModeDoc:'글 모드', statModeImg:'그림 모드',
     statHintDoc:'',
     statHintImg:'레이어를 클릭해 이동, 모서리 사각형으로 크기 조절',
-    dlgSaveTitle:'저장할 파일 이름', dlgTableTitle:'표 삽입', dlgTextTitle:'텍스트 레이어 추가', dlgCanvasTitle:'캔버스 크기',
-    btnCancel:'취소', btnSave:'저장', btnInsert:'삽입', btnAdd:'추가', btnApply:'적용', btnOk:'확인',
-    lblRows:'행', lblCols:'열', lblContent:'내용', lblSize:'크기', lblColor:'색상', lblWidth:'너비', lblHeight:'높이',
+    dlgSaveTitle:'저장할 파일 이름', dlgTableTitle:'표 삽입', dlgTextTitle:'텍스트 레이어 추가', dlgCanvasTitle:'캔버스 크기', dlgAdjustTitle:'이미지 보정',
+    btnCancel:'취소', btnSave:'저장', btnInsert:'삽입', btnAdd:'추가', btnApply:'적용', btnOk:'확인', btnReset:'초기화',
+    lblRows:'행', lblCols:'열', lblContent:'내용', lblSize:'크기', lblColor:'색상', lblWidth:'너비', lblHeight:'높이', lblBrightness:'밝기', lblContrast:'대비', lblHue:'색조',
     optTransparent:'투명', optColor:'색상',
     tAddRowT:'현재 행 아래에 행 추가', tDelRowT:'현재 행 삭제',
     tAddColT:'현재 열 오른쪽에 열 추가', tDelColT:'현재 열 삭제',
@@ -888,6 +903,11 @@ const I18N = {
     mGifMaking:'GIF 생성 중… (배경은 흰색으로 저장됩니다)',
     mGifFail:'GIF 모듈을 불러오지 못했습니다 (인터넷 연결 필요)',
     mSelImgLayer:'이미지 레이어를 선택하세요.',
+    mLassoDone:'올가미 선택을 만들었습니다. Enter로 확정, Esc로 해제할 수 있습니다.',
+    mCloneSourceSet:'복제 기준점을 지정했습니다. 이제 다른 위치를 드래그해 복제하세요.',
+    mCloneTip:'복제 기준점을 먼저 찍으세요. 같은 도구에서 Shift+클릭으로 기준점을 다시 지정할 수 있습니다.',
+    mBgRemoved:'비슷한 색상의 연결 영역을 제거했습니다.',
+    mAdjusted:'이미지 보정을 적용했습니다.',
     mClickTable:'표 안을 클릭한 뒤 사용하세요.',
     mSumRowDone:'아래 합계를 추가했습니다. 값을 고친 뒤 버튼을 다시 누르면 재계산됩니다.',
     mSumColDone:'우측 합계를 추가했습니다. 값을 고친 뒤 버튼을 다시 누르면 재계산됩니다.',
@@ -994,8 +1014,8 @@ const I18N = {
     mLibLoading:'필요한 구성 요소를 내려받는 중입니다…',
     mLibFail:'구성 요소를 내려받지 못했습니다. 인터넷 연결을 확인해 주세요.',
     lblTrim:'이미지만 저장', tTrim:'작업 캔버스가 넓어도 저장할 때는 실제 이미지·그림 영역만 저장합니다',
-    imgMoveT:'이동 / 선택 (V)', imgBrushT:'브러시 (B)', imgPencilT:'연필 (N)', imgEraserT:'지우개 (E)',
-    imgEyedropperT:'스포이드 (I)', imgCropT:'자르기 (C)', imgTextT:'문자 (T)', imgRectT:'사각형 (U)',
+    imgMoveT:'이동 / 선택 (V)', imgLassoT:'올가미 선택 (L)', imgWandT:'마술봉 / 배경제거 (W)', imgBrushT:'브러시 (B)', imgPencilT:'연필 (N)', imgCloneT:'복제도장 (S)', imgEraserT:'지우개 (E)',
+    imgBlurT:'흐림 (G)', imgSharpenT:'선명 (K)', imgEyedropperT:'스포이드 (I)', imgCropT:'자르기 (C)', imgTextT:'문자 (T)', imgRectT:'사각형 (U)',
     imgEllipseT:'원 / 타원 (Shift+U)', imgHandT:'손 도구 (H)', imgZoomT:'확대 / 축소 (Z)',
     imgColorLbl:'색상', imgColorT:'그리기 색상', imgSizeLbl:'크기', imgSizeT:'브러시 / 도형 선 굵기',
     mTrimmed:'빈 바탕을 잘라내고 저장했습니다.',
@@ -1019,7 +1039,7 @@ const I18N = {
     btnNewDoc:'New', btnOpenDoc:'Open', btnImportXlsx:'Open Excel/CSV',
     btnSaveDoc:'Save', btnPrint:'Print / PDF',
     btnNewCanvas:'New canvas', btnAddImg:'Add image', btnAddText:'Add text',
-    btnCrop:'Crop', btnCanvasSize:'Canvas size', lblBg:'Background', lblZoom:'Zoom', lblFmt:'Format',
+    btnCrop:'Crop', btnCanvasSize:'Canvas size', btnAdjust:'Adjust image', lblBg:'Background', lblZoom:'Zoom', lblFmt:'Format',
     btnExport:'Export', btnApplyDoc:'Apply to document ↩',
     layerTitle:'Layers (top = front)', lblOpacity:'Opacity',
     lyUp:'▲ Up', lyDown:'▼ Down', lyDel:'Delete', lyRot:'↻ Rotate', lyFlip:'⇋ Flip',
@@ -1049,6 +1069,11 @@ const I18N = {
     mGifMaking:'Creating GIF… (background is saved as white)',
     mGifFail:'Could not load the GIF module (internet required)',
     mSelImgLayer:'Please select an image layer.',
+    mLassoDone:'Lasso selection created. Press Enter to confirm or Esc to clear it.',
+    mCloneSourceSet:'Clone source set. Now drag elsewhere to clone from that point.',
+    mCloneTip:'Set a clone source first. With the same tool, Shift-click to set a new source point.',
+    mBgRemoved:'Removed the connected area with similar colors.',
+    mAdjusted:'Applied the image adjustment.',
     mClickTable:'Click inside a table first.',
     mSumRowDone:'Added a sum row below. Edit values and click again to recalculate.',
     mSumColDone:'Added a sum column on the right. Edit values and click again to recalculate.',
@@ -1155,8 +1180,8 @@ const I18N = {
     mLibLoading:'Downloading the components needed for this…',
     mLibFail:'Could not download the component. Please check your internet connection.',
     lblTrim:'Save image only', tTrim:'Keeps the workspace wide but exports only the actual image/artwork area',
-    imgMoveT:'Move / select (V)', imgBrushT:'Brush (B)', imgPencilT:'Pencil (N)', imgEraserT:'Eraser (E)',
-    imgEyedropperT:'Eyedropper (I)', imgCropT:'Crop (C)', imgTextT:'Text (T)', imgRectT:'Rectangle (U)',
+    imgMoveT:'Move / select (V)', imgLassoT:'Lasso (L)', imgWandT:'Magic wand / remove background (W)', imgBrushT:'Brush (B)', imgPencilT:'Pencil (N)', imgCloneT:'Clone stamp (S)', imgEraserT:'Eraser (E)',
+    imgBlurT:'Blur (G)', imgSharpenT:'Sharpen (K)', imgEyedropperT:'Eyedropper (I)', imgCropT:'Crop (C)', imgTextT:'Text (T)', imgRectT:'Rectangle (U)',
     imgEllipseT:'Ellipse (Shift+U)', imgHandT:'Hand (H)', imgZoomT:'Zoom in/out (Z)',
     imgColorLbl:'Color', imgColorT:'Drawing color', imgSizeLbl:'Size', imgSizeT:'Brush / shape stroke size',
     mTrimmed:'Saved with the empty background trimmed off.',
@@ -2032,6 +2057,10 @@ let bgTransparent = true, bgColor = '#FFFFFF';
 let imgTool = 'move';
 let toolDrag = null;
 let textInsertPos = null;
+let lassoState = null;
+let selectionPoly = null;
+let cloneSource = null;
+let adjustState = null;
 
 /* 체커보드 패턴 */
 const checker = (()=> {
@@ -2045,6 +2074,13 @@ const checker = (()=> {
 function sel(){ return layers.find(l=>l.id===selId) || null; }
 function toolSize(){ return Math.max(1, Math.min(300, +$('imgBrushSize').value || 18)); }
 function toolColor(){ return $('imgFgColor').value || '#22262B'; }
+function currentImageLayer(showMsg=true){ const l = sel(); if(l && l.type==='image') return l; if(showMsg) msg(T('mSelImgLayer')); return null; }
+function copyCanvas(src){ const c=document.createElement('canvas'); c.width=src.width; c.height=src.height; c.getContext('2d').drawImage(src,0,0); return c; }
+function dist(a,b){ return Math.hypot((a.x||0)-(b.x||0),(a.y||0)-(b.y||0)); }
+function pointInPoly(x,y,pts){ let inside=false; for(let i=0,j=pts.length-1;i<pts.length;j=i++){ const xi=pts[i].x, yi=pts[i].y, xj=pts[j].x, yj=pts[j].y; const hit=((yi>y)!=(yj>y)) && (x < (xj-xi)*(y-yi)/((yj-yi)||1e-9)+xi); if(hit) inside=!inside; } return inside; }
+function hasSelectionForLayer(l){ return !!(l && selectionPoly && selectionPoly.layerId===l.id && selectionPoly.points && selectionPoly.points.length>=3); }
+function pointSelectedGlobal(l,gx,gy){ return !hasSelectionForLayer(l) || pointInPoly(gx,gy,selectionPoly.points); }
+function clearSelection(){ lassoState=null; selectionPoly=null; render(); }
 
 function textBox(l){
   ctx.font = `${l.fontSize}px 'Segoe UI','Malgun Gothic',sans-serif`;
@@ -2092,6 +2128,24 @@ function render(){
     ctx.fillStyle = '#1F4E8C';
     ctx.fillRect(b.x+b.w-6, b.y+b.h-6, 12, 12);
   }
+  function drawPoly(points, closed, hover){
+    if(!points || !points.length) return;
+    ctx.save();
+    ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2; ctx.setLineDash([8,5]);
+    ctx.beginPath(); ctx.moveTo(points[0].x, points[0].y);
+    for(let i=1;i<points.length;i++) ctx.lineTo(points[i].x, points[i].y);
+    if(hover) ctx.lineTo(hover.x, hover.y);
+    if(closed) ctx.closePath();
+    ctx.stroke();
+    ctx.strokeStyle = '#1F4E8C'; ctx.setLineDash([4,5]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#1F4E8C';
+    for(const p of points) ctx.fillRect(p.x-2,p.y-2,4,4);
+    ctx.restore();
+  }
+  if(selectionPoly && selectionPoly.points && selectionPoly.points.length>=3) drawPoly(selectionPoly.points, true, null);
+  if(lassoState && lassoState.points && lassoState.points.length) drawPoly(lassoState.points, false, lassoState.hover || null);
 }
 
 /* 레이어 패널 */
@@ -2133,7 +2187,7 @@ $('opRange').oninput = e=>{
 };
 $('lyUp').onclick = ()=>{ const i = layers.findIndex(l=>l.id===selId); if(i>=0 && i<layers.length-1){ [layers[i],layers[i+1]]=[layers[i+1],layers[i]]; render(); renderPanel(); } };
 $('lyDown').onclick = ()=>{ const i = layers.findIndex(l=>l.id===selId); if(i>0){ [layers[i],layers[i-1]]=[layers[i-1],layers[i]]; render(); renderPanel(); } };
-$('lyDel').onclick = ()=>{ layers = layers.filter(l=>l.id!==selId); selId = layers.length?layers[layers.length-1].id:null; render(); renderPanel(); };
+$('lyDel').onclick = ()=>{ if(selectionPoly && selectionPoly.layerId===selId) selectionPoly=null; layers = layers.filter(l=>l.id!==selId); selId = layers.length?layers[layers.length-1].id:null; render(); renderPanel(); };
 $('lyRot').onclick = ()=>{
   const l = sel(); if(!l || l.type!=='image'){ msg(T('mSelImgLayer')); return; }
   const c = document.createElement('canvas');
@@ -2157,7 +2211,7 @@ function setImgTool(t){
   if(cropping && t!=='crop') stopCrop(false);
   imgTool = t;
   document.querySelectorAll('#imgToolbox [data-imgtool]').forEach(b=>b.classList.toggle('active', b.dataset.imgtool===t));
-  const cur = {move:'default',brush:'crosshair',pencil:'crosshair',eraser:'crosshair',eyedropper:'copy',crop:'crosshair',text:'text',rect:'crosshair',ellipse:'crosshair',hand:'grab',zoom:'zoom-in'};
+  const cur = {move:'default',lasso:'crosshair',wand:'copy',brush:'crosshair',pencil:'crosshair',clone:'crosshair',eraser:'crosshair',blur:'crosshair',sharpen:'crosshair',eyedropper:'copy',crop:'crosshair',text:'text',rect:'crosshair',ellipse:'crosshair',hand:'grab',zoom:'zoom-in'};
   cv.style.cursor = cur[t] || 'default';
   if(t==='crop' && !cropping) startCrop();
 }
@@ -2219,7 +2273,7 @@ function fitZoomToView(){
 }
 $('btnNewCanvas').onclick = async ()=>{
   if(layers.length){ if(!await askConfirm(T('cfNewCanvas'))) return; }
-  layers = []; selId = null; docImgTarget = null;
+  layers = []; selId = null; docImgTarget = null; selectionPoly=null; lassoState=null; cloneSource=null; adjustState=null;
   $('btnApplyDoc').style.display = 'none';
   setImgTool('move'); render(); renderPanel(); msg(T('mNewCanvas'));
 };
@@ -2276,6 +2330,139 @@ function eraseImageLine(l,a,b){
   x.save(); x.globalCompositeOperation='destination-out'; x.lineWidth=sz; x.lineCap='round'; x.lineJoin='round';
   x.beginPath(); x.moveTo(a.x-l.x,a.y-l.y); x.lineTo(b.x-l.x,b.y-l.y); x.stroke(); x.restore(); return true;
 }
+function layerLocalPoint(l, p){ return {x:p.x-l.x, y:p.y-l.y}; }
+function removeMagicAt(l, p){
+  const c=rasterizeImageLayer(l); if(!c) return false;
+  const pt=layerLocalPoint(l,p), sx=Math.floor(pt.x), sy=Math.floor(pt.y);
+  if(sx<0||sy<0||sx>=c.width||sy>=c.height) return false;
+  const x=c.getContext('2d');
+  const img=x.getImageData(0,0,c.width,c.height), d=img.data;
+  const idx0=(sy*c.width+sx)*4, a0=d[idx0+3]; if(a0===0) return false;
+  const ref=[d[idx0],d[idx0+1],d[idx0+2],d[idx0+3]], tol=Math.max(18, Math.min(140, toolSize()*2));
+  const seen=new Uint8Array(c.width*c.height), qx=[sx], qy=[sy]; seen[sy*c.width+sx]=1;
+  while(qx.length){
+    const px=qx.pop(), py=qy.pop(), i=(py*c.width+px)*4;
+    const dr=Math.abs(d[i]-ref[0]), dg=Math.abs(d[i+1]-ref[1]), db=Math.abs(d[i+2]-ref[2]), da=Math.abs(d[i+3]-ref[3]);
+    if(dr+dg+db+da > tol*3) continue;
+    if(!pointSelectedGlobal(l, l.x+px+0.5, l.y+py+0.5)) continue;
+    d[i+3]=0;
+    if(px>0){ const ni=py*c.width+px-1; if(!seen[ni]){ seen[ni]=1; qx.push(px-1); qy.push(py); } }
+    if(px<c.width-1){ const ni=py*c.width+px+1; if(!seen[ni]){ seen[ni]=1; qx.push(px+1); qy.push(py); } }
+    if(py>0){ const ni=(py-1)*c.width+px; if(!seen[ni]){ seen[ni]=1; qx.push(px); qy.push(py-1); } }
+    if(py<c.height-1){ const ni=(py+1)*c.width+px; if(!seen[ni]){ seen[ni]=1; qx.push(px); qy.push(py+1); } }
+  }
+  x.putImageData(img,0,0);
+  return true;
+}
+function stampCloneDot(x, srcCanvas, tx, ty, sx, sy, radius){
+  x.save();
+  x.beginPath(); x.arc(tx, ty, radius, 0, Math.PI*2); x.clip();
+  x.drawImage(srcCanvas, sx-radius, sy-radius, radius*2, radius*2, tx-radius, ty-radius, radius*2, radius*2);
+  x.restore();
+}
+function cloneLine(drag,a,b){
+  const c=rasterizeImageLayer(drag.l); if(!c) return;
+  const x=c.getContext('2d');
+  const radius=Math.max(1, toolSize()/2), step=Math.max(1, radius*0.35);
+  const dx=b.x-a.x, dy=b.y-a.y, dist=Math.hypot(dx,dy), n=Math.max(1, Math.ceil(dist/step));
+  for(let i=0;i<=n;i++){
+    const t=i/n, gx=a.x+dx*t, gy=a.y+dy*t;
+    if(!pointSelectedGlobal(drag.l, gx, gy)) continue;
+    const tx=gx-drag.l.x, ty=gy-drag.l.y;
+    const sx=tx-drag.offsetX, sy=ty-drag.offsetY;
+    stampCloneDot(x, drag.srcCanvas, tx, ty, sx, sy, radius);
+  }
+}
+function applyFilterBrushAt(l, p, kind){
+  const c=rasterizeImageLayer(l); if(!c) return;
+  const local=layerLocalPoint(l,p), cx=Math.round(local.x), cy=Math.round(local.y);
+  const radius=Math.max(2, Math.round(toolSize()/2)), pad=2;
+  const sx=Math.max(0, cx-radius-pad), sy=Math.max(0, cy-radius-pad);
+  const sw=Math.min(c.width-sx, radius*2+pad*2+1), sh=Math.min(c.height-sy, radius*2+pad*2+1);
+  if(sw<2||sh<2) return;
+  const x=c.getContext('2d');
+  const img=x.getImageData(sx,sy,sw,sh); const src=new Uint8ClampedArray(img.data); const out=img.data;
+  function sample(px,py,ch){ px=Math.max(0,Math.min(sw-1,px)); py=Math.max(0,Math.min(sh-1,py)); return src[(py*sw+px)*4+ch]; }
+  for(let py=0; py<sh; py++) for(let px=0; px<sw; px++){
+    const gx=l.x+sx+px, gy=l.y+sy+py;
+    if(!pointSelectedGlobal(l, gx+0.5, gy+0.5)) continue;
+    const dd=Math.hypot((sx+px)-cx, (sy+py)-cy); if(dd>radius) continue;
+    const idx=(py*sw+px)*4; if(src[idx+3]===0) continue;
+    let nr=0, ng=0, nb=0, na=src[idx+3];
+    if(kind==='blur'){
+      let cnt=0;
+      for(let ky=-1; ky<=1; ky++) for(let kx=-1; kx<=1; kx++){
+        nr += sample(px+kx, py+ky, 0); ng += sample(px+kx, py+ky, 1); nb += sample(px+kx, py+ky, 2); cnt++;
+      }
+      nr/=cnt; ng/=cnt; nb/=cnt;
+    }else{
+      const kernel=[[0,-1,0],[-1,5,-1],[0,-1,0]];
+      for(let ky=-1; ky<=1; ky++) for(let kx=-1; kx<=1; kx++){
+        const kv=kernel[ky+1][kx+1];
+        nr += sample(px+kx, py+ky, 0)*kv; ng += sample(px+kx, py+ky, 1)*kv; nb += sample(px+kx, py+ky, 2)*kv;
+      }
+      nr=Math.max(0,Math.min(255,nr)); ng=Math.max(0,Math.min(255,ng)); nb=Math.max(0,Math.min(255,nb));
+    }
+    const blend=(kind==='blur'?0.72:0.82)*(1-dd/radius);
+    out[idx] = src[idx]*(1-blend)+nr*blend;
+    out[idx+1] = src[idx+1]*(1-blend)+ng*blend;
+    out[idx+2] = src[idx+2]*(1-blend)+nb*blend;
+    out[idx+3] = na;
+  }
+  x.putImageData(img,sx,sy);
+}
+function applyFilterLine(drag,a,b){
+  const radius=Math.max(2, toolSize()/2), step=Math.max(1, radius*0.35);
+  const dx=b.x-a.x, dy=b.y-a.y, dist=Math.hypot(dx,dy), n=Math.max(1, Math.ceil(dist/step));
+  for(let i=0;i<=n;i++) applyFilterBrushAt(drag.l, {x:a.x+dx*(i/n), y:a.y+dy*(i/n)}, drag.kind);
+}
+function rgbToHsl(r,g,b){
+  const max=Math.max(r,g,b), min=Math.min(r,g,b); let h,s,l=(max+min)/2;
+  if(max===min){ h=s=0; }
+  else {
+    const d=max-min; s=l>0.5 ? d/(2-max-min) : d/(max+min);
+    switch(max){ case r: h=(g-b)/d + (g<b?6:0); break; case g: h=(b-r)/d + 2; break; default: h=(r-g)/d + 4; }
+    h/=6;
+  }
+  return [h,s,l];
+}
+function hue2rgb(p,q,t){ if(t<0) t+=1; if(t>1) t-=1; if(t<1/6) return p+(q-p)*6*t; if(t<1/2) return q; if(t<2/3) return p+(q-p)*(2/3-t)*6; return p; }
+function hslToRgb(h,s,l){
+  let r,g,b;
+  if(s===0) r=g=b=l;
+  else {
+    const q=l<0.5 ? l*(1+s) : l+s-l*s, p=2*l-q;
+    r=hue2rgb(p,q,h+1/3); g=hue2rgb(p,q,h); b=hue2rgb(p,q,h-1/3);
+  }
+  return [Math.round(r*255), Math.round(g*255), Math.round(b*255)];
+}
+function adjustedCanvasFrom(srcCanvas, l, opts){
+  const c=copyCanvas(srcCanvas), x=c.getContext('2d');
+  const img=x.getImageData(0,0,c.width,c.height), d=img.data;
+  const bShift=255*(opts.brightness/100), cf=(259*(opts.contrast+255))/(255*(259-opts.contrast||1));
+  for(let py=0; py<c.height; py++) for(let px=0; px<c.width; px++){
+    if(!pointSelectedGlobal(l, l.x+px+0.5, l.y+py+0.5)) continue;
+    const i=(py*c.width+px)*4; if(d[i+3]===0) continue;
+    let r=d[i], g=d[i+1], b=d[i+2];
+    r=cf*(r+bShift-128)+128; g=cf*(g+bShift-128)+128; b=cf*(b+bShift-128)+128;
+    r=Math.max(0,Math.min(255,r)); g=Math.max(0,Math.min(255,g)); b=Math.max(0,Math.min(255,b));
+    let [h,s,ll]=rgbToHsl(r/255,g/255,b/255); h=(h*360+opts.hue)%360; if(h<0) h+=360;
+    [r,g,b]=hslToRgb(h/360,s,ll); d[i]=r; d[i+1]=g; d[i+2]=b;
+  }
+  x.putImageData(img,0,0); return c;
+}
+function updateAdjustLabels(){
+  $('adjBrightnessVal').textContent = $('adjBrightness').value;
+  $('adjContrastVal').textContent = $('adjContrast').value;
+  $('adjHueVal').textContent = $('adjHue').value + '°';
+}
+function updateAdjustPreview(){
+  if(!adjustState) return;
+  const l=layers.find(x=>x.id===adjustState.layerId); if(!l) return;
+  updateAdjustLabels();
+  l.img = adjustedCanvasFrom(adjustState.original, l, {brightness:+$('adjBrightness').value||0, contrast:+$('adjContrast').value||0, hue:+$('adjHue').value||0});
+  render(); renderPanel();
+}
 
 /* 마우스 상호작용 */
 let drag = null;
@@ -2298,9 +2485,28 @@ function zoomClick(e){
 }
 cv.addEventListener('mousedown', e=>{
   const p = toCanvas(e);
+  if(imgTool==='lasso'){
+    const l=currentImageLayer(true); if(!l) return;
+    if(!lassoState || lassoState.layerId!==l.id) lassoState={layerId:l.id, points:[], hover:null};
+    if(lassoState.points.length>=3 && dist(lassoState.points[0], p) < 10){ selectionPoly={layerId:l.id, points:lassoState.points.slice()}; lassoState=null; render(); msg(T('mLassoDone')); return; }
+    lassoState.points.push(p); render(); return;
+  }
   if(imgTool==='brush' || imgTool==='pencil'){
     const l=ensurePaintLayer(imgTool==='pencil'?'Pencil':'Brush');
     paintLine(l,p,p,false,imgTool==='pencil'); toolDrag={mode:'paint',l,last:p,pencil:imgTool==='pencil'}; render(); return;
+  }
+  if(imgTool==='wand'){
+    const l=currentImageLayer(true); if(!l) return;
+    if(removeMagicAt(l,p)){ render(); renderPanel(); msg(T('mBgRemoved')); }
+    return;
+  }
+  if(imgTool==='clone'){
+    const l=currentImageLayer(true); if(!l) return;
+    if(e.shiftKey || !cloneSource){ cloneSource=layerLocalPoint(l,p); msg(T('mCloneSourceSet')); return; }
+    const srcCanvas=copyCanvas(rasterizeImageLayer(l));
+    const local=layerLocalPoint(l,p);
+    toolDrag={mode:'clone', l, last:p, offsetX:local.x-cloneSource.x, offsetY:local.y-cloneSource.y, srcCanvas};
+    cloneLine(toolDrag,p,p); render(); return;
   }
   if(imgTool==='eraser'){
     const l=sel();
@@ -2310,6 +2516,11 @@ cv.addEventListener('mousedown', e=>{
     const pl=(l && l.type==='paint') ? l : layers.slice().reverse().find(x=>x.type==='paint'&&x.visible);
     if(pl){ paintLine(pl,p,p,true,false); toolDrag={mode:'erasePaint',l:pl,last:p}; render(); }
     return;
+  }
+  if(imgTool==='blur' || imgTool==='sharpen'){
+    const l=currentImageLayer(true); if(!l) return;
+    applyFilterBrushAt(l,p,imgTool==='blur'?'blur':'sharpen');
+    toolDrag={mode:'filter', l, last:p, kind:imgTool==='blur'?'blur':'sharpen'}; render(); return;
   }
   if(imgTool==='eyedropper'){ pickColorAt(p); return; }
   if(imgTool==='text'){ textInsertPos=p; $('txColor').value=toolColor(); $('dlgText').showModal(); return; }
@@ -2340,6 +2551,7 @@ cv.addEventListener('mousedown', e=>{
   }
   selId = null; render(); renderPanel();
 });
+cv.addEventListener('dblclick', ()=>{ if(imgTool==='lasso' && lassoState && lassoState.points && lassoState.points.length>=3){ selectionPoly={layerId:lassoState.layerId, points:lassoState.points.slice()}; lassoState=null; render(); msg(T('mLassoDone')); } });
 window.addEventListener('mousemove', e=>{
   if(toolDrag){
     if(toolDrag.mode==='hand'){
@@ -2349,12 +2561,15 @@ window.addEventListener('mousemove', e=>{
     if(toolDrag.mode==='paint'){ paintLine(toolDrag.l,toolDrag.last,p,false,toolDrag.pencil); toolDrag.last=p; render(); return; }
     if(toolDrag.mode==='erasePaint'){ paintLine(toolDrag.l,toolDrag.last,p,true,false); toolDrag.last=p; render(); return; }
     if(toolDrag.mode==='eraseImage'){ eraseImageLine(toolDrag.l,toolDrag.last,p); toolDrag.last=p; render(); return; }
+    if(toolDrag.mode==='clone'){ cloneLine(toolDrag, toolDrag.last, p); toolDrag.last=p; render(); return; }
+    if(toolDrag.mode==='filter'){ applyFilterLine(toolDrag, toolDrag.last, p); toolDrag.last=p; render(); return; }
     if(toolDrag.mode==='shape'){
       const l=toolDrag.l; l.x=Math.min(toolDrag.sx,p.x); l.y=Math.min(toolDrag.sy,p.y); l.w=Math.max(1,Math.abs(p.x-toolDrag.sx)); l.h=Math.max(1,Math.abs(p.y-toolDrag.sy)); render(); return;
     }
   }
-  if(!drag) return;
   const p = toCanvas(e);
+  if(imgTool==='lasso' && lassoState && lassoState.points && lassoState.points.length){ lassoState.hover=p; render(); }
+  if(!drag) return;
   if(drag.mode==='move'){ drag.l.x = p.x-drag.dx; drag.l.y = p.y-drag.dy; }
   else {
     if(drag.l.type==='image'){
@@ -2386,6 +2601,18 @@ $('bgColor').oninput = e=>{ bgColor = e.target.value; render(); };
 
 /* 캔버스 크기 */
 $('btnCanvasSize').onclick = ()=>{ $('cW').value = cv.width; $('cH').value = cv.height; $('dlgCanvas').showModal(); };
+$('btnAdjust').onclick = ()=>{
+  const l=currentImageLayer(true); if(!l) return;
+  const base=copyCanvas(rasterizeImageLayer(l));
+  adjustState={layerId:l.id, original:base};
+  $('adjBrightness').value='0'; $('adjContrast').value='0'; $('adjHue').value='0'; updateAdjustLabels();
+  $('dlgAdjust').showModal(); updateAdjustPreview();
+};
+['adjBrightness','adjContrast','adjHue'].forEach(id=> $(id).addEventListener('input', updateAdjustPreview));
+$('adjReset').onclick = ()=>{ $('adjBrightness').value='0'; $('adjContrast').value='0'; $('adjHue').value='0'; updateAdjustPreview(); };
+$('adjCancel').onclick = ()=>{ if(adjustState){ const l=layers.find(x=>x.id===adjustState.layerId); if(l) l.img=copyCanvas(adjustState.original); adjustState=null; render(); renderPanel(); } $('dlgAdjust').close(); };
+$('adjApply').onclick = ()=>{ updateAdjustPreview(); adjustState=null; $('dlgAdjust').close(); msg(T('mAdjusted')); };
+$('dlgAdjust').addEventListener('cancel', e=>{ e.preventDefault(); $('adjCancel').click(); });
 $('cOk').onclick = ()=>{
   resizeCanvasPreservePaint(Math.max(16,+$('cW').value||1000), Math.max(16,+$('cH').value||700));
   $('dlgCanvas').close(); render();
@@ -2436,12 +2663,14 @@ function applyCrop(){
 window.addEventListener('keydown', e=>{
   if(e.key==='Enter' && cropping){ applyCrop(); return; }
   if(e.key==='Escape' && cropping){ stopCrop(true); return; }
+  if(e.key==='Escape' && (lassoState || selectionPoly)){ clearSelection(); return; }
   if(e.key==='Delete' && !cropping && selId && document.activeElement.tagName!=='INPUT' && !editor.contains(document.activeElement)){ $('lyDel').click(); return; }
   if(CUR_MODE!=='img' || e.ctrlKey || e.metaKey || e.altKey) return;
   const tag=(document.activeElement && document.activeElement.tagName)||'';
   if(['INPUT','TEXTAREA','SELECT'].includes(tag) || (document.activeElement && document.activeElement.isContentEditable)) return;
   const k=e.key.toLowerCase();
-  const map={v:'move',b:'brush',n:'pencil',e:'eraser',i:'eyedropper',c:'crop',t:'text',h:'hand',z:'zoom'};
+  if(k==='enter' && lassoState && lassoState.points && lassoState.points.length>=3){ selectionPoly={layerId:lassoState.layerId, points:lassoState.points.slice()}; lassoState=null; render(); msg(T('mLassoDone')); return; }
+  const map={v:'move',l:'lasso',w:'wand',b:'brush',n:'pencil',s:'clone',e:'eraser',g:'blur',k:'sharpen',i:'eyedropper',c:'crop',t:'text',h:'hand',z:'zoom'};
   if(k==='u'){ setImgTool(e.shiftKey?'ellipse':'rect'); e.preventDefault(); }
   else if(map[k]){ setImgTool(map[k]); e.preventDefault(); }
 });
