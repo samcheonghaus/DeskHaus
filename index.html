@@ -472,10 +472,27 @@
     <span data-i18n="lblTrim">이미지만 저장</span>
   </label>
   <div class="sep"></div>
+  <label class="small" data-i18n="lblScale">크기 줄이기</label>
+  <select id="scaleSel" data-i18n-title="tScale"
+          title="원본 대비 몇 %로 줄여서 저장할지 고릅니다. 가로·세로가 함께 줄어들어 파일 용량이 작아집니다.">
+    <option value="1" selected data-i18n="optSc100">100% (원본)</option>
+    <option value="0.7">70%</option>
+    <option value="0.5">50%</option>
+    <option value="0.3">30%</option>
+    <option value="0.2">20%</option>
+  </select>
+  <span id="scaleInfo" class="small" style="color:#6b7280; min-width:0;"></span>
+  <div class="sep"></div>
   <label class="small" data-i18n="lblFmt">저장 형식</label>
   <select id="fmtSel">
     <option value="png">PNG</option><option value="jpeg">JPG</option><option value="webp">WebP</option>
     <option value="ico">ICO</option><option value="gif">GIF</option>
+  </select>
+  <select id="qualSel" style="display:none;" data-i18n-title="tQual"
+          title="JPG · WebP 의 압축 품질입니다. 낮출수록 파일이 가벼워집니다.">
+    <option value="0.92" selected data-i18n="optQHi">품질 높음</option>
+    <option value="0.75" data-i18n="optQMid">품질 보통</option>
+    <option value="0.55" data-i18n="optQLo">품질 낮음</option>
   </select>
   <select id="icoSize" style="display:none;">
     <option value="16">16px</option><option value="32" selected>32px</option><option value="48">48px</option>
@@ -873,6 +890,9 @@ const I18N = {
     btnSaveDoc:'저장', btnPrint:'인쇄 / PDF',
     btnNewCanvas:'새 캔버스', btnAddImg:'이미지 추가', btnAddText:'텍스트 추가',
     btnCrop:'자르기', btnCanvasSize:'캔버스 크기', btnAdjust:'이미지 보정', lblBg:'배경', lblZoom:'확대', lblFmt:'저장 형식',
+    lblScale:'크기 줄이기', optSc100:'100% (원본)', optQHi:'품질 높음', optQMid:'품질 보통', optQLo:'품질 낮음',
+    tScale:'원본 대비 몇 %로 줄여서 저장할지 고릅니다. 가로·세로가 함께 줄어들어 파일 용량이 작아집니다.',
+    tQual:'JPG · WebP 의 압축 품질입니다. 낮출수록 파일이 가벼워집니다.',
     btnExport:'내보내기', btnApplyDoc:'문서에 적용 ↩',
     layerTitle:'레이어 (위 = 앞)', lblOpacity:'투명도',
     lyUp:'▲ 앞', lyDown:'▼ 뒤', lyDel:'삭제', lyRot:'↻ 회전', lyFlip:'⇋ 반전',
@@ -1040,6 +1060,9 @@ const I18N = {
     btnSaveDoc:'Save', btnPrint:'Print / PDF',
     btnNewCanvas:'New canvas', btnAddImg:'Add image', btnAddText:'Add text',
     btnCrop:'Crop', btnCanvasSize:'Canvas size', btnAdjust:'Adjust image', lblBg:'Background', lblZoom:'Zoom', lblFmt:'Format',
+    lblScale:'Resize', optSc100:'100% (original)', optQHi:'High quality', optQMid:'Medium quality', optQLo:'Low quality',
+    tScale:'Save at a percentage of the original size. Width and height shrink together, so the file gets smaller.',
+    tQual:'Compression quality for JPG and WebP. Lower means a lighter file.',
     btnExport:'Export', btnApplyDoc:'Apply to document ↩',
     layerTitle:'Layers (top = front)', lblOpacity:'Opacity',
     lyUp:'▲ Up', lyDown:'▼ Down', lyDel:'Delete', lyRot:'↻ Rotate', lyFlip:'⇋ Flip',
@@ -2150,6 +2173,7 @@ function render(){
 
 /* 레이어 패널 */
 function renderPanel(){
+  try{ updateScaleInfo(); }catch(e){}
   const list = $('layerList'); list.innerHTML = '';
   [...layers].reverse().forEach(l=>{
     const d = document.createElement('div');
@@ -2708,16 +2732,69 @@ function flatten(forceBg, trimOverride){
   return off;
 }
 
-$('fmtSel').onchange = e=> $('icoSize').style.display = e.target.value==='ico'?'inline-block':'none';
+/* ── 저장할 때 크기 줄이기 (파일 용량 감소) ── */
+function downscaleCanvas(src, ratio){
+  if(!(ratio > 0) || ratio >= 1) return src;
+  const tw = Math.max(1, Math.round(src.width  * ratio));
+  const th = Math.max(1, Math.round(src.height * ratio));
+  let cur = src;
+  /* 한 번에 크게 줄이면 계단 현상이 생기므로 절반씩 단계적으로 줄입니다 */
+  while(cur.width > tw * 2 && cur.height > th * 2){
+    const half = document.createElement('canvas');
+    half.width  = Math.max(tw, Math.round(cur.width  / 2));
+    half.height = Math.max(th, Math.round(cur.height / 2));
+    const hx = half.getContext('2d');
+    hx.imageSmoothingEnabled = true; hx.imageSmoothingQuality = 'high';
+    hx.drawImage(cur, 0, 0, half.width, half.height);
+    cur = half;
+  }
+  const out = document.createElement('canvas'); out.width = tw; out.height = th;
+  const ox = out.getContext('2d');
+  ox.imageSmoothingEnabled = true; ox.imageSmoothingQuality = 'high';
+  ox.drawImage(cur, 0, 0, tw, th);
+  return out;
+}
+const exportRatio   = ()=> (+($('scaleSel') || {}).value || 1);
+const exportQuality = ()=> (+($('qualSel')  || {}).value || 0.92);
+const exportCanvas  = forceBg => downscaleCanvas(flatten(forceBg, true), exportRatio());
+const humanSize = n => n < 1024 ? n + ' B'
+                     : n < 1048576 ? Math.round(n/1024) + ' KB'
+                     : (n/1048576).toFixed(1) + ' MB';
+function updateScaleInfo(blob, out){
+  const el = $('scaleInfo'); if(!el) return;
+  if(blob && out){ el.textContent = `${out.width}×${out.height} · ${humanSize(blob.size)}`; return; }
+  if(!layers.length){ el.textContent = ''; return; }
+  const b = contentBounds(), w = b ? b.w : cv.width, h = b ? b.h : cv.height, r = exportRatio();
+  el.textContent = (r >= 1 || $('fmtSel').value === 'ico')
+    ? `${w}×${h}`
+    : `${w}×${h} → ${Math.max(1, Math.round(w*r))}×${Math.max(1, Math.round(h*r))}`;
+}
+$('scaleSel').onchange = ()=> updateScaleInfo();
+$('fmtSel').onchange = e=>{
+  const v = e.target.value;
+  $('icoSize').style.display = v === 'ico' ? 'inline-block' : 'none';
+  $('qualSel').style.display = (v === 'jpeg' || v === 'webp') ? 'inline-block' : 'none';
+  $('scaleSel').disabled = (v === 'ico');   /* ICO 는 아이콘 크기로 따로 지정합니다 */
+  updateScaleInfo();
+};
 $('btnExport').onclick = async ()=>{
   if(!layers.length){ msg(T('mNoLayers')); return; }
   const fmt = $('fmtSel').value, stamp = new Date().toISOString().slice(0,10);
+  const q = exportQuality();
+  const finish = (blob, out, name)=>{ updateScaleInfo(blob, out); download(blob, name); };
   try{
-    if(fmt==='png' || fmt==='webp') flatten(false,true).toBlob(b=> download(b, `${T('fnImg')}${stamp}.${fmt==='png'?'png':'webp'}`), 'image/'+fmt);
-    else if(fmt==='jpeg') flatten(true,true).toBlob(b=> download(b, `${T('fnImg')}${stamp}.jpg`), 'image/jpeg', 0.92);
+    if(fmt==='png' || fmt==='webp'){
+      const out = exportCanvas(false);
+      out.toBlob(b=> finish(b, out, `${T('fnImg')}${stamp}.${fmt==='png'?'png':'webp'}`),
+                 'image/'+fmt, fmt==='webp' ? q : undefined);
+    }
+    else if(fmt==='jpeg'){
+      const out = exportCanvas(true);
+      out.toBlob(b=> finish(b, out, `${T('fnImg')}${stamp}.jpg`), 'image/jpeg', q);
+    }
     else if(fmt==='ico'){ const size = +$('icoSize').value; download(await makeIco(size), `${T('fnIcon')}${stamp}.ico`); }
     else if(fmt==='gif'){ msg(T('mGifMaking')); download(await makeGif(), `${T('fnImg')}${stamp}.gif`); }
-    msg(contentBounds() ? T('mTrimmed') : T('mExported'));
+    if(fmt==='ico' || fmt==='gif') msg(contentBounds() ? T('mTrimmed') : T('mExported'));
   } catch(err){ msg(T('mExportFail') + err.message); }
 };
 
@@ -2748,7 +2825,7 @@ function makeGif(){
     });
   }
   return gifReady.then(workerURL => new Promise((res, rej)=>{
-    const flat = flatten(true,true); const g = new GIF({workers:1, quality:8, width:flat.width, height:flat.height, workerScript:workerURL});
+    const flat = exportCanvas(true); const g = new GIF({workers:1, quality:8, width:flat.width, height:flat.height, workerScript:workerURL});
     g.addFrame(flat, {delay:200}); g.on('finished', b=> res(b)); g.on('abort', ()=> rej(new Error('중단됨'))); g.render();
   }));
 }
@@ -4427,7 +4504,19 @@ const HELP_CONTENT = {
   <li>PDF 페이지를 그림 모드로 가져와 편집 가능</li>
 </ul>
 <h4>저장</h4>
-<p>PNG·JPEG·WebP로 내보내거나, <b>문서에 적용</b>으로 글 모드에 다시 넣을 수 있습니다.</p>`
+<p>PNG·JPEG·WebP로 내보내거나, <b>문서에 적용</b>으로 글 모드에 다시 넣을 수 있습니다.</p>
+<h4>파일 용량 줄이기</h4>
+<ul>
+  <li><b>크기 줄이기</b>에서 70% · 50% · 30% · 20% 를 고르면 그 비율로 축소해 저장합니다.
+      원본 캔버스는 그대로 두고 <b>저장되는 파일만</b> 작아집니다.</li>
+  <li>선택하면 옆에 <span class="tag">1600×1200 → 480×360</span> 처럼 결과 크기가 미리 표시되고,
+      저장 후에는 실제 파일 용량이 표시됩니다.</li>
+  <li>저장 형식을 <b>JPG</b> 또는 <b>WebP</b> 로 하면 <b>품질</b> 선택이 함께 나타납니다.
+      크기 축소와 품질을 같이 낮추면 용량이 가장 많이 줄어듭니다.</li>
+  <li>사진은 <b>JPG</b>, 로고·도면처럼 선이 많은 그림은 <b>PNG</b> 가 대체로 더 작습니다.
+      <b>WebP</b> 는 둘 다 잘 줄어들지만 오래된 프로그램에서 안 열릴 수 있습니다.</li>
+  <li>ICO 는 아이콘 크기를 따로 지정하므로 크기 줄이기가 적용되지 않습니다.</li>
+</ul>`
     },
     {
       id:'sheet', label:'📊 표(스프레드시트)',
@@ -4644,7 +4733,16 @@ const HELP_CONTENT = {
   <li>Import a PDF page for markup</li>
 </ul>
 <h4>Export</h4>
-<p>Export as PNG, JPEG, or WebP, or send back to the Text document.</p>`
+<p>Export as PNG, JPEG, or WebP, or send back to the Text document.</p>
+<h4>Making the file smaller</h4>
+<ul>
+  <li><b>Resize</b> saves the image at 70% · 50% · 30% · 20% of its size.
+      The canvas you are working on is untouched — only the <b>saved file</b> shrinks.</li>
+  <li>The resulting pixel size is previewed next to the control, and the actual file size is shown after saving.</li>
+  <li>Choosing <b>JPG</b> or <b>WebP</b> reveals a <b>quality</b> setting. Lowering both size and quality gives the biggest reduction.</li>
+  <li>Photos are usually smaller as JPG; line art and logos as PNG. WebP compresses both well but older software may not open it.</li>
+  <li>Resize does not apply to ICO, which uses its own icon size setting.</li>
+</ul>`
     },
     {
       id:'sheet', label:'📊 Sheet',
