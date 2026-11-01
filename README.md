@@ -37,14 +37,18 @@ A built-in **user guide** is available any time from the **❓ Help** button in 
 - **Live selection stats** — sum, average, and count shown as you select, just like Excel's status bar
 - **Σ AutoSum** — one click inserts the right `=SUM()` for your selection
 - **Copy / Cut / Paste** (Ctrl+C/X/V) with relative-reference shifting — and it's clipboard-compatible with real Excel in both directions
-- **Auto-fill handle** — drag the corner of a selection; `1, 2` becomes `3, 4, 5`, formulas shift their references
+- **Excel-style auto-fill** — drag the ■ handle in any direction, or **double-click it** to fill down to the end of the neighbouring column; `1, 2` becomes `3, 4, 5…`. Dates, weekdays, months, quarters and text like `Item1 → Item2` continue automatically; Ctrl+drag counts up a single number
+- **Fill series dialog** — start, step and stop value for numbers, growth series or dates (e.g. 1 to 100 in one step)
+- **Multiple sheets** — sheet tabs to add, rename, duplicate, delete and reorder; cross-sheet formulas such as `=Sheet2!A1` that follow renames
+- **AutoFilter** — ▾ buttons in the header row to pick values, search, and sort
 - **Undo / Redo** (Ctrl+Z / Ctrl+Y)
 - **Find & Replace** (Ctrl+F / Ctrl+H) in a small non-blocking panel
 - **Merge cells** — one toggle button; merges survive Excel export/import
-- **Pivot tables** — pick row / column / value fields and an aggregate (sum, count, avg, min, max), get a pivot with grand totals
-- Insert/delete rows & columns with automatic formula-reference adjustment, column resizing, sorting with header detection
-- Formatting applied instantly to the whole selection: bold, italic, underline, alignment, text & fill color (applies the moment you pick a color), thousands separator, percent, decimal places
-- Open and save `.xlsx` / `.csv` (formulas preserved), or send the table straight into your document
+- **Pivot tables** — select a cell in your table, pick row / column / value fields and an aggregate (sum, count, avg, min, max); the pivot with grand totals is created on a **new sheet**, like Excel (or at the active cell)
+- Insert/delete rows & columns with automatic formula-reference adjustment, column resizing (double-click a border to AutoFit), sorting of the whole table with header detection
+- Formatting applied instantly to the whole selection: bold, italic, underline, alignment, text & fill color, **borders**, **wrap text**, **font size**, number formats (thousands, ₩, $, %, date), decimal places
+- **Ctrl+Enter** fills every selected cell at once; **fx** menu inserts common functions; dates like `2026-11-01` work in formulas (`=A1+7`)
+- Open and save `.xlsx` with **all sheets**, formulas, number formats, column widths and merges; `.csv` for the current sheet; or send the table straight into your document
 
 ### 📄 PDF
 - View, zoom, and navigate PDFs
@@ -75,7 +79,12 @@ A built-in **user guide** is available any time from the **❓ Help** button in 
 | F2 or double-click | Edit cell |
 | Ctrl + C / X / V | Copy / Cut / Paste |
 | Ctrl + Z / Y | Undo / Redo |
-| Ctrl + D / R | Fill down / right |
+| Ctrl + D / R | Fill down / right (copy) |
+| Ctrl + Enter | Enter the same value in every selected cell |
+| Alt + = | AutoSum |
+| Ctrl + Shift + L | Toggle filter |
+| Ctrl + PageUp / PageDown | Previous / next sheet |
+| Shift + F11 | New sheet |
 | Ctrl + B / I / U | Bold / Italic / Underline |
 | Ctrl + F / H | Find / Replace |
 | Delete | Clear selection |
