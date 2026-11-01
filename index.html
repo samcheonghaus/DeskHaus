@@ -171,9 +171,33 @@
   #sheetTable th.hsel{ background:#DCE6F5; color:var(--accent); }
   #sheetScroll{ position:relative; }
   #shFillHandle{
-    display:none; position:absolute; width:8px; height:8px; z-index:3;
+    display:none; position:absolute; width:9px; height:9px; z-index:3;
     background:var(--accent); border:1.5px solid #fff; cursor:crosshair;
   }
+  /* 시트 탭 */
+  #shTabs{ display:flex; align-items:stretch; gap:2px; border-top:1px solid var(--line); background:#F3F5F8;
+    padding:0 8px; flex-shrink:0; height:31px; overflow-x:auto; overflow-y:hidden; }
+  #shAddSheet{ border:none; background:none; font-size:18px; padding:0 10px; color:var(--muted); border-radius:0; }
+  #shAddSheet:hover{ color:var(--accent); background:#E8EEF7; }
+  #shTabList{ display:flex; gap:2px; }
+  .shTab{ padding:5px 16px; font-size:13px; cursor:pointer; color:var(--muted); border:1px solid transparent; border-top:none;
+    border-radius:0 0 7px 7px; white-space:nowrap; user-select:none; }
+  .shTab:hover{ color:var(--ink); background:#E9ECF1; }
+  .shTab.on{ background:#fff; color:var(--accent); font-weight:600; border-color:var(--line); box-shadow:inset 0 2px 0 var(--accent); }
+  .shTab input{ font:inherit; width:120px; border:1px solid var(--accent); border-radius:4px; padding:0 4px; }
+  /* 자동 필터 */
+  #sheetTable td .fbtn{ float:right; width:16px; height:16px; line-height:14px; margin:2px -3px 0 4px; text-align:center;
+    font-size:10px; border:1px solid #AEB6C2; border-radius:3px; background:#F7F8FA; color:#4A5160; cursor:pointer; font-weight:400; font-style:normal; }
+  #sheetTable td .fbtn.act{ background:var(--accent); color:#fff; border-color:var(--accent); }
+  #fltPop{ position:fixed; z-index:260; width:240px; background:#fff; border:1px solid var(--line); border-radius:8px;
+    box-shadow:0 6px 22px rgba(30,40,60,.18); font-size:13px; padding:5px 0; }
+  #fltPop .mi{ padding:6px 14px; cursor:pointer; }
+  #fltPop .mi:hover{ background:var(--accent-soft); color:var(--accent); }
+  #fltPop .msep{ height:1px; margin:5px 0; background:var(--line); }
+  #fltPop .fsearch{ display:block; width:calc(100% - 20px); margin:4px 10px; border:1px solid var(--line); border-radius:6px; padding:5px 8px; font:inherit; }
+  #fltPop .flist{ max-height:220px; overflow:auto; margin:4px 10px; border:1px solid var(--line); border-radius:6px; padding:4px 6px; }
+  #fltPop .flist label{ display:flex; align-items:center; gap:6px; padding:2px 0; white-space:nowrap; cursor:pointer; }
+  #fltPop .fbtns{ display:flex; justify-content:flex-end; gap:6px; padding:8px 10px 4px; }
   #shStats{
     padding:0 14px; font-size:12.5px; color:var(--accent); white-space:pre;
     border-left:1px solid var(--line); align-self:stretch; display:flex; align-items:center;
@@ -533,6 +557,17 @@
   <button id="shMerge" data-i18n="shMerge" data-i18n-title="tShMerge" title="선택 범위 병합 / 다시 누르면 해제">병합</button>
   <button id="shFind" data-i18n="shFind" data-i18n-title="tShFind" title="찾기/바꾸기 (Ctrl+F)">찾기</button>
   <button id="shFreeze" data-i18n="shFreeze" data-i18n-title="tShFreeze" title="첫 행과 첫 열을 고정해 스크롤해도 항상 보이게 합니다">틀 고정</button>
+  <button id="shFilter" data-i18n="shFilter" data-i18n-title="tShFilter" title="필터">필터</button>
+  <button id="shSeries" data-i18n="shSeries" data-i18n-title="tShSeries" title="연속 채우기">연속 채우기</button>
+  <select id="shFunc" data-i18n-title="tShFunc" title="함수 넣기" style="width:86px;">
+    <option value="" data-i18n="optFunc">fx 함수</option>
+    <option>SUM</option><option>AVERAGE</option><option>COUNT</option><option>COUNTA</option><option>MAX</option><option>MIN</option>
+    <option>IF</option><option>SUMIF</option><option>COUNTIF</option><option>AVERAGEIF</option><option>VLOOKUP</option><option>XLOOKUP</option>
+    <option>INDEX</option><option>MATCH</option><option>ROUND</option><option>ROUNDUP</option><option>ROUNDDOWN</option>
+    <option>IFERROR</option><option>AND</option><option>OR</option><option>CONCATENATE</option><option>LEFT</option><option>RIGHT</option><option>MID</option>
+    <option>LEN</option><option>TRIM</option><option>TODAY</option><option>NOW</option><option>DATE</option><option>YEAR</option><option>MONTH</option><option>DAY</option>
+    <option>SUMPRODUCT</option><option>RANK</option><option>ABS</option>
+  </select>
   <div class="sep"></div>
   <button id="shBold" class="icon" title="굵게 (Ctrl+B)"><b>B</b></button>
   <button id="shItalic" class="icon" title="기울임 (Ctrl+I)"><i>I</i></button>
@@ -543,7 +578,31 @@
   <button id="shAlignL" class="icon" title="왼쪽 정렬">⯇</button>
   <button id="shAlignC" class="icon" title="가운데 정렬">≡</button>
   <button id="shAlignR" class="icon" title="오른쪽 정렬">⯈</button>
+  <button id="shWrap" class="icon" data-i18n-title="tShWrap" title="텍스트 줄 바꿈">↵</button>
+  <select id="shFontSize" data-i18n-title="tShFontSize" title="글자 크기" style="width:62px;">
+    <option value="_" data-i18n="fsLabel">크기</option><option value="">10</option>
+    <option>8</option><option>9</option><option>11</option><option>12</option><option>14</option><option>16</option>
+    <option>18</option><option>20</option><option>24</option><option>28</option><option>36</option>
+  </select>
+  <select id="shBorder" data-i18n-title="tShBorder" title="테두리" style="width:84px;">
+    <option value="_" data-i18n="bdLabel">테두리</option>
+    <option value="all" data-i18n="bdAll">모든 테두리</option>
+    <option value="outer" data-i18n="bdOuter">바깥쪽 테두리</option>
+    <option value="thick" data-i18n="bdThick">굵은 바깥쪽</option>
+    <option value="bottom" data-i18n="bdBottom">아래쪽 테두리</option>
+    <option value="dbottom" data-i18n="bdDouble">아래쪽 이중</option>
+    <option value="none" data-i18n="bdNone">테두리 없음</option>
+  </select>
   <div class="sep"></div>
+  <select id="shNumFmt" data-i18n-title="tShNumFmt" title="표시 형식" style="width:92px;">
+    <option value="_" data-i18n="nfLabel">표시 형식</option>
+    <option value="gen" data-i18n="nfGeneral">일반</option>
+    <option value="num" data-i18n="nfNum">숫자 (1,000)</option>
+    <option value="krw" data-i18n="nfKrw">통화 (₩)</option>
+    <option value="usd" data-i18n="nfUsd">통화 ($)</option>
+    <option value="pct" data-i18n="nfPct">백분율 (%)</option>
+    <option value="date" data-i18n="nfDate">날짜</option>
+  </select>
   <button id="shComma" class="icon" data-i18n-title="tShComma" title="천 단위 쉼표">,</button>
   <button id="shPct" class="icon" data-i18n-title="tShPct" title="백분율 표시">%</button>
   <button id="shDecDec" class="icon" data-i18n-title="tShDecDec" title="소수 자릿수 줄이기">.0→</button>
@@ -727,8 +786,9 @@
       </div>
       <div id="sheetScroll">
         <table id="sheetTable"></table>
-        <div id="shFillHandle" title="드래그하여 자동 채우기"></div>
+        <div id="shFillHandle" title="드래그: 자동 채우기 · 더블클릭: 아래로 끝까지 채우기"></div>
       </div>
+      <div id="shTabs"><button id="shAddSheet" data-i18n-title="tShAddSheet" title="새 시트">＋</button><div id="shTabList"></div></div>
     </div>
   </div>
 
@@ -858,8 +918,25 @@
       <option value="max" data-i18n="pvMax">최대</option>
     </select>
   </div>
-  <p style="font-size:12px; color:var(--muted); margin:2px 0 12px;" data-i18n="pvHint">첫 행을 머리글로 보고, 결과는 현재 선택한 셀 위치에 넣습니다.</p>
+  <div class="frow"><label data-i18n="pvLblOut">위치</label>
+    <select id="pvOut" style="flex:1;"><option value="new" data-i18n="pvOutNew">새 시트</option><option value="here" data-i18n="pvOutHere">현재 셀 위치</option></select>
+  </div>
+  <p id="pvSrc" style="font-size:12px; color:var(--accent); margin:2px 0 4px;"></p>
+  <p style="font-size:12px; color:var(--muted); margin:2px 0 12px;" data-i18n="pvHint">첫 행을 머리글로 봅니다.</p>
   <div class="btns"><button id="pvCancel" data-i18n="btnCancel">취소</button><button class="primary" id="pvOk" data-i18n="btnOk">확인</button></div>
+</dialog>
+
+<!-- 연속 데이터 채우기 -->
+<dialog id="dlgSeries">
+  <h4 data-i18n="dlgSeriesTitle">연속 데이터 채우기</h4>
+  <p id="srMsg" style="font-size:12px; color:var(--accent); margin:-6px 0 10px; display:none;"></p>
+  <div class="frow"><label data-i18n="srDir">방향</label><select id="srDir" style="flex:1;"><option value="col" data-i18n="srCol">열 (아래로)</option><option value="row" data-i18n="srRow">행 (오른쪽으로)</option></select></div>
+  <div class="frow"><label data-i18n="srType">유형</label><select id="srType" style="flex:1;"><option value="lin" data-i18n="srLin">선형 (더하기)</option><option value="grow" data-i18n="srGrow">급수 (곱하기)</option><option value="date" data-i18n="srDate">날짜 (일 단위)</option></select></div>
+  <div class="frow"><label data-i18n="srStart">시작 값</label><input type="text" id="srStart"></div>
+  <div class="frow"><label data-i18n="srStep">단계 값</label><input type="text" id="srStep" value="1"></div>
+  <div class="frow"><label data-i18n="srStop">종료 값</label><input type="text" id="srStop"></div>
+  <p style="font-size:12px; color:var(--muted); margin:2px 0 12px; max-width:300px;" data-i18n="srHint">종료 값을 넣으면 그 값까지 채우고, 비워 두면 선택한 범위만 채웁니다.</p>
+  <div class="btns"><button id="srCancel" data-i18n="btnCancel">취소</button><button class="primary" id="srOk" data-i18n="btnOk">확인</button></div>
 </dialog>
 
 <!-- 찾기/바꾸기 대화상자 (비모달) -->
@@ -2979,22 +3056,51 @@ function selRange(){
 function refOf(r,c){ return colName(c)+(r+1); }
 function rangeRef(r1,c1,r2,c2){ return (r1===r2&&c1===c2) ? refOf(r1,c1) : refOf(r1,c1)+':'+refOf(r2,c2); }
 
+/* ── 통합 문서: 여러 시트 ──
+   화면에 보이는 시트의 내용은 전역 변수(shData, shStyle …)에 들어 있고,
+   다른 시트들은 shBook 에 보관됩니다. 시트를 바꿀 때 saveActive / loadActive 로 맞바꿉니다. */
+let shBook = [], shCur = 0, shHfId = 0;
+let shFilter = null;          // 자동 필터 {r, c1, c2, r2, crit:{열번호: Set(허용 값)}}
+let shHidden = new Set();     // 필터로 숨긴 행
+function newSheetObj(name){
+  return { name, rows:SH_ROWS_INIT, cols:SH_COLS_INIT,
+    data:Array.from({length:SH_ROWS_INIT}, ()=> Array(SH_COLS_INIT).fill('')),
+    style:{}, colW:Array(SH_COLS_INIT).fill(SH_DEFAULT_W), merges:[], frozen:false, filter:null,
+    undo:[], redo:[], sel:[0,0,0,0], scroll:[0,0] };
+}
+function saveActive(){
+  const s = shBook[shCur]; if(!s) return;
+  s.data=shData; s.style=shStyle; s.colW=shColW; s.merges=shMerges; s.rows=shRows; s.cols=shCols;
+  s.frozen=shFrozen; s.filter=shFilter; s.undo=shUndo; s.redo=shRedo; s.sel=[selR,selC,ancR,ancC];
+  const el=$('sheetScroll'); if(el) s.scroll=[el.scrollTop, el.scrollLeft];
+}
+function loadActive(i){
+  shCur=i; const s=shBook[i];
+  shData=s.data; shStyle=s.style; shColW=s.colW; shMerges=s.merges; shRows=s.rows; shCols=s.cols;
+  shFrozen=s.frozen; shFilter=s.filter; shUndo=s.undo; shRedo=s.redo;
+  [selR,selC,ancR,ancC]=s.sel;
+  try{ shHfId = hf ? hf.getSheetId(s.name) : 0; }catch(e){ shHfId = 0; }
+}
 function ensureSheet(){
   if(sheetReady) return;
   if(typeof HyperFormula === 'undefined'){ msg(T('mSheetNoMod')); return; }
-  shRows = SH_ROWS_INIT; shCols = SH_COLS_INIT;
-  shData = Array.from({length:shRows}, ()=> Array(shCols).fill(''));
-  shStyle = {};
-  shColW = Array(shCols).fill(SH_DEFAULT_W);
+  shBook = [newSheetObj('Sheet1')]; loadActive(0);
   buildHF();
   renderSheet();
+  renderSheetTabs();
   sheetReady = true;
 }
+/* 날짜 문자열(2026-11-01 등)도 날짜로 계산되도록 형식을 더해 줍니다 */
+const HF_CFG = { licenseKey:'gpl-v3', dateFormats:['YYYY/MM/DD','DD/MM/YYYY','DD/MM/YY'] };
 function buildHF(){
+  saveActive();
   if(hf){ try{ hf.destroy(); }catch(e){} }
   /* 빈 칸은 null 로 넘김 — 빈 문자열을 넣으면 계산 엔진이 수만 개의 값을 떠안아 느려집니다 */
-  const arr = shData.map(row => row.map(v => (v==='' || v==null) ? null : v));
-  hf = HyperFormula.buildFromArray(arr, { licenseKey:'gpl-v3' });
+  const sheets = {};
+  shBook.forEach(sh=>{ sheets[sh.name] = sh.data.map(row => row.map(v => (v==='' || v==null) ? null : v)); });
+  try{ hf = HyperFormula.buildFromSheets(sheets, HF_CFG); }
+  catch(e){ hf = HyperFormula.buildFromSheets(sheets, { licenseKey:'gpl-v3' }); }
+  shHfId = hf.getSheetId(shBook[shCur].name);
 }
 /* 계산된 원시값 (수식이면 결과, 아니면 입력값) */
 function cellValue(r,c){
@@ -3002,7 +3108,7 @@ function cellValue(r,c){
   if(raw === '' || raw == null) return '';
   if(typeof raw === 'string' && raw[0] === '='){
     try{
-      const v = hf.getCellValue({sheet:0, row:r, col:c});
+      const v = hf.getCellValue({sheet:shHfId, row:r, col:c});
       if(v && typeof v==='object'){ return (typeof v.value==='string' && v.value[0]==='#') ? v.value : '#ERR'; }
       return v==null ? '' : v;
     }catch(e){ return '#ERR'; }
@@ -3011,19 +3117,37 @@ function cellValue(r,c){
 }
 function toNum(v){
   if(typeof v==='number') return v;
-  const n = parseFloat(String(v).replace(/,/g,''));
-  return (!isNaN(n) && String(v).trim()!=='') ? n : null;
+  if(v==null || typeof v==='boolean') return null;
+  const s = String(v).replace(/,/g,'').trim();
+  if(s==='') return null;
+  const n = Number(s);            /* '2026-11-01' 같은 글자를 2026 으로 읽지 않도록 엄격하게 */
+  return isFinite(n) ? n : null;
+}
+/* 엑셀 날짜 일련번호 → 2026-11-01 */
+function serialToDate(n){
+  const d = new Date(Date.UTC(1899,11,30) + Math.round(n*86400000));
+  const ds = d.toISOString();
+  return (Math.abs(n % 1) > 1e-9) ? ds.slice(0,10)+' '+ds.slice(11,16) : ds.slice(0,10);
+}
+function isDateResult(r,c){
+  const raw = shData[r][c];
+  if(!(typeof raw==='string' && raw[0]==='=')) return false;
+  try{ return /DATE/.test(String(hf.getCellValueDetailedType({sheet:shHfId, row:r, col:c}))); }catch(e){ return false; }
 }
 /* 숫자 표시 형식 적용 */
 function fmtNum(n, st){
   let x = st.pct ? n*100 : n;
+  const cur = st.nf==='krw' || st.nf==='usd';
+  const dec = st.dec!=null ? st.dec : (st.nf==='usd' ? 2 : (st.nf==='krw' ? 0 : null));
+  const comma = st.comma || cur;
   let s;
-  if(st.dec!=null){
-    s = st.comma ? x.toLocaleString('en-US',{minimumFractionDigits:st.dec, maximumFractionDigits:st.dec})
-                 : x.toFixed(st.dec);
+  if(dec!=null){
+    s = comma ? x.toLocaleString('en-US',{minimumFractionDigits:dec, maximumFractionDigits:dec})
+              : x.toFixed(dec);
   } else {
-    s = st.comma ? x.toLocaleString('en-US',{maximumFractionDigits:10}) : String(x);
+    s = comma ? x.toLocaleString('en-US',{maximumFractionDigits:10}) : String(parseFloat(x.toPrecision(15)));
   }
+  if(cur){ const sym = st.nf==='krw' ? '₩' : '$'; s = (x<0?'-':'') + sym + s.replace('-',''); }
   return st.pct ? s+'%' : s;
 }
 /* 화면 표시 문자열 */
@@ -3031,16 +3155,26 @@ function cellDisplay(r,c){
   const v = cellValue(r,c);
   if(v==='' || v==null) return '';
   if(v==='#ERR') return '#ERR';
+  if(typeof v==='boolean') return v ? 'TRUE' : 'FALSE';
+  if(typeof v==='string' && v[0]==="'") return v.slice(1);     /* '0123 처럼 글자로 강제한 값 */
   const st = shStyle[cellKey(r,c)] || {};
   const n = toNum(v);
-  if(n!=null && (st.comma || st.pct || st.dec!=null)) return fmtNum(n, st);
+  if(n!=null && st.nf==='date') return serialToDate(n);
+  if(n!=null && !st.nf && !st.pct && isDateResult(r,c)) return serialToDate(n);
+  if(n!=null && (st.comma || st.pct || st.dec!=null || st.nf)) return fmtNum(n, st);
+  if(typeof v==='number') return String(parseFloat(v.toPrecision(15)));   /* 0.1+0.2 → 0.3 */
   return String(v);
 }
 function cellStyleStr(r,c){
   const st = shStyle[cellKey(r,c)] || {};
-  const disp = cellDisplay(r,c);
-  const numeric = toNum(disp.replace(/%$/,''))!=null && disp!=='';
+  const v0 = cellValue(r,c);
+  const numeric = typeof v0==='number' || (v0!=='' && toNum(v0)!=null);
+  const bd = w => w===3 ? '3px double #22262B' : (w+'px solid #22262B');
   return [
+    st.bt?`border-top:${bd(st.bt)}`:'', st.bb?`border-bottom:${bd(st.bb)}`:'',
+    st.bl?`border-left:${bd(st.bl)}`:'', st.br?`border-right:${bd(st.br)}`:'',
+    st.wrap?'white-space:normal;word-break:break-word':'',
+    st.fs?`font-size:${st.fs}pt`:'',
     st.bold?'font-weight:700':'',
     st.italic?'font-style:italic':'',
     st.under?'text-decoration:underline':'',
@@ -3051,6 +3185,7 @@ function cellStyleStr(r,c){
 }
 function renderSheet(){
   const tb = $('sheetTable');
+  shHidden = computeHidden();
   let html = '<colgroup><col style="width:44px">';
   for(let c=0;c<shCols;c++) html += `<col style="width:${shColW[c]||SH_DEFAULT_W}px">`;
   html += '</colgroup><thead><tr><th id="shCorner"></th>';
@@ -3064,7 +3199,7 @@ function renderSheet(){
       if(r!==m.r || c!==m.c) covered[r+','+c] = true;
   }
   for(let r=0;r<shRows;r++){
-    html += `<tr><th data-hr="${r}">${r+1}</th>`;
+    html += `<tr${shHidden.has(r)?' style="display:none"':''}><th data-hr="${r}">${r+1}</th>`;
     for(let c=0;c<shCols;c++){
       if(covered[r+','+c]) continue;
       const sp = spanAt[r+','+c];
@@ -3090,6 +3225,7 @@ function renderSheet(){
     if(th.dataset.hc != null) shHeadCols[th.dataset.hc] = th;
     else if(th.dataset.hr != null) shHeadRows[th.dataset.hr] = th;
   }
+  decorateFilter();
   paintSel();
 }
 /* 좌표 → td (병합으로 덮인 칸은 병합 앵커 셀을 돌려줌) */
@@ -3158,6 +3294,7 @@ function paintSel(){
     const cells = (r2-r1+1)*(c2-c1+1);
     if(cells > 200000){ stat.textContent=''; return; }   /* 너무 큰 선택은 통계 생략 */
     for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++){
+      if(shHidden.has(r)) continue;
       const v = cellValue(r,c);
       if(v!=='' && v!=null && v!=='#ERR'){ cnt++; const n=toNum(v); if(n!=null){ sum+=n; nCnt++; } }
     }
@@ -3224,7 +3361,7 @@ function setCellRaw(r,c,val){
   shData[r][c] = val;
   markLive(r,c);
   if(shBatch) return;
-  try{ hf.setCellContents({sheet:0, row:r, col:c}, [[val===''?null:val]]); }catch(e){ buildHF(); }
+  try{ hf.setCellContents({sheet:shHfId, row:r, col:c}, [[val===''?null:val]]); }catch(e){ buildHF(); }
 }
 function setCellValue(r,c,val){  /* 단일 셀 + 화면 갱신 (undo는 호출부에서) */
   setCellRaw(r,c,val);
@@ -3243,6 +3380,7 @@ function recalcRender(){
     td.textContent = cellDisplay(r,c);
     td.style.cssText = cellStyleStr(r,c);
   }
+  decorateFilter();
   paintSel();
 }
 /* 활성 목록 다시 만들기 (표 전체 교체·정렬·행열 이동 후) */
@@ -3308,6 +3446,8 @@ function tryInsertRef(t, r, c){
 
 sheetTb.addEventListener('mousedown', e=>{
   if(e.button === 2) return;          /* 오른쪽 클릭은 아래 contextmenu 에서 처리 */
+  const fb = e.target.closest('.fbtn');
+  if(fb){ e.preventDefault(); e.stopPropagation(); commitPendingEdit(); openFilterPop(+fb.dataset.fc, fb); return; }
   const td = e.target.closest('td');
   if(td){
     const r=+td.dataset.r, c=+td.dataset.c;
@@ -3351,7 +3491,7 @@ sheetTb.addEventListener('mouseover', e=>{
     refEditSet(t, base + rangeRef(Math.min(ar,r),Math.min(ac,c),Math.max(ar,r),Math.max(ac,c)));
     return;
   }
-  if(shFillDragging){ updateFillPreview(r,c); return; }
+  if(shFillDragging){ shFillMode = (e.ctrlKey || e.metaKey) ? 'ctrl' : 'auto'; updateFillPreview(r,c); return; }
   if(shDragging){ setSel(r, c, true); }
 });
 document.addEventListener('mouseup', ()=>{
@@ -3359,6 +3499,13 @@ document.addEventListener('mouseup', ()=>{
   if(shFillDragging){ shFillDragging=false; applyFillDrag(); }
 });
 sheetTb.addEventListener('dblclick', e=>{
+  if(e.target.closest('.fbtn')) return;
+  const th = e.target.closest('th');
+  if(th && th.dataset.hc!=null){
+    const rect = th.getBoundingClientRect();
+    if(rect.right - e.clientX < 6) autoFitCols(+th.dataset.hc);   /* 열 경계 더블클릭 → 너비 자동 맞춤 */
+    return;
+  }
   const td = e.target.closest('td'); if(!td) return;
   startEdit(+td.dataset.r, +td.dataset.c);
 });
@@ -3384,62 +3531,136 @@ $('shFillHandle').addEventListener('mousedown', e=>{
   e.preventDefault(); e.stopPropagation();
   commitPendingEdit();
   shFillDragging = true; shFillTarget = null;
+  shFillMode = (e.ctrlKey || e.metaKey) ? 'ctrl' : 'auto';
 });
+$('shFillHandle').addEventListener('dblclick', e=>{ e.preventDefault(); e.stopPropagation(); autoFillDown(); });
 function updateFillPreview(r,c){
   sheetTb.querySelectorAll('td.fsel').forEach(td=>td.classList.remove('fsel'));
   const {r1,c1,r2,c2} = selRange();
+  const dDown=r-r2, dUp=r1-r, dRight=c-c2, dLeft=c1-c;
+  const best=Math.max(dDown,dUp,dRight,dLeft);
   let tgt=null;
-  if(r>r2 && (r-r2) >= Math.max(0,c-c2)) tgt={dir:'down', r1:r2+1, c1, r2:r, c2};
-  else if(c>c2) tgt={dir:'right', r1, c1:c2+1, r2, c2:c};
+  if(best>0){
+    if(best===dDown)       tgt={dir:'down',  r1:r2+1, c1, r2:r,    c2,        count:dDown};
+    else if(best===dUp)    tgt={dir:'up',    r1:r,    c1, r2:r1-1, c2,        count:dUp};
+    else if(best===dRight) tgt={dir:'right', r1, c1:c2+1, r2,      c2:c,      count:dRight};
+    else                   tgt={dir:'left',  r1, c1:c,    r2,      c2:c1-1,   count:dLeft};
+  }
   shFillTarget = tgt;
   if(!tgt) return;
   for(let rr=tgt.r1; rr<=tgt.r2; rr++) for(let cc=tgt.c1; cc<=tgt.c2; cc++){
     const td=cellEl(rr,cc); if(td) td.classList.add('fsel');
   }
 }
-function seriesNext(vals, k){
-  /* vals: 원본 숫자 배열(2개 이상, 등차) → k번째 다음 항 */
-  const step = vals.length>1 ? (vals[vals.length-1]-vals[0])/(vals.length-1) : 0;
-  return vals[vals.length-1] + step*(k+1);
-}
-function fillCells(srcR1,srcC1,srcR2,srcC2, dir, count){
-  /* dir 'down': 아래로 count행 채움 / 'right': 오른쪽으로 count열 */
-  if(dir==='down'){
-    for(let c=srcC1;c<=srcC2;c++){
-      const vals=[]; let allNum=true;
-      for(let r=srcR1;r<=srcR2;r++){ const raw=shData[r][c]; const n=toNum(raw); if(typeof raw==='string'&&raw[0]==='=') { allNum=false; break;} if(n==null&&raw!==''&&raw!=null){allNum=false;} vals.push(n); }
-      const numeric = allNum && vals.length>1 && vals.every(v=>v!=null);
-      for(let k=0;k<count;k++){
-        const srcR = srcR1 + (k % (srcR2-srcR1+1));
-        const tgtR = srcR2+1+k;
-        const raw = shData[srcR][c];
-        let out;
-        if(typeof raw==='string' && raw[0]==='=') out = shiftFormula(raw, tgtR-srcR, 0);
-        else if(numeric) out = String(seriesNext(vals, k));
-        else out = raw;
-        setCellRaw(tgtR, c, out);
-        if(shStyle[cellKey(srcR,c)]) shStyle[cellKey(tgtR,c)] = {...shStyle[cellKey(srcR,c)]};
-      }
+/* ── 엑셀식 연속 데이터 판별 ──
+   1,2 → 3,4,5…   2026-11-01 → 다음 날   월,화 → 수   1월 → 2월   Q1 → Q2   항목1 → 항목2
+   mode: 'auto' 일반 끌기 / 'ctrl' Ctrl+끌기 (숫자 한 칸이면 1씩 증가, 여러 칸이면 복사) / 'copy' 항상 복사 */
+const FILL_LISTS = [
+  ['일','월','화','수','목','금','토'],
+  ['일요일','월요일','화요일','수요일','목요일','금요일','토요일'],
+  ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
+  ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
+  ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+  ['January','February','March','April','May','June','July','August','September','October','November','December'],
+  ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'],
+  ['1분기','2분기','3분기','4분기'], ['Q1','Q2','Q3','Q4'],
+  ['상반기','하반기'], ['갑','을','병','정','무','기','경','신','임','계'],
+];
+const DATE_RE = /^(\d{4})([-./])(\d{1,2})\2(\d{1,2})$/;
+const niceNum = x => parseFloat((+x).toPrecision(12));
+function makeSeries(vals, mode){
+  const n = vals.length;
+  const cyc = i => vals[((i%n)+n)%n];
+  if(mode==='copy') return cyc;
+  const strs = vals.map(v => v==null ? '' : String(v));
+  if(strs.some(x=>x==='' || x[0]==='=')) return cyc;
+  /* 숫자 */
+  const nums = vals.map(v => typeof v==='number' ? v : toNum(v));
+  if(nums.every(x=>x!=null)){
+    if(n===1) return mode==='ctrl' ? (i=> niceNum(nums[0]+i)) : cyc;
+    if(mode==='ctrl') return cyc;
+    let sx=0,sy=0,sxx=0,sxy=0;
+    for(let i=0;i<n;i++){ sx+=i; sy+=nums[i]; sxx+=i*i; sxy+=i*nums[i]; }
+    const b=(n*sxy-sx*sy)/(n*sxx-sx*sx), a0=(sy-b*sx)/n;   /* 엑셀처럼 추세(최소제곱) */
+    return i => (i>=0 && i<n) ? vals[i] : niceNum(a0+b*i);
+  }
+  if(mode==='ctrl') return cyc;
+  /* 날짜 */
+  const dm = strs.map(x=>x.match(DATE_RE));
+  if(dm.every(Boolean)){
+    const sep=dm[0][2], pad=dm[0][3].length===2 || dm[0][4].length===2;
+    const p = x => pad ? String(x).padStart(2,'0') : String(x);
+    const fmt = (y,mo,d) => y+sep+p(mo)+sep+p(d);
+    const t = dm.map(m=>Date.UTC(+m[1],+m[3]-1,+m[4]));
+    let monthStep=null;
+    if(n>1 && dm.every(m=>+m[4]===+dm[0][4])){
+      const mi=dm.map(m=>(+m[1])*12+(+m[3]-1)), st=(mi[n-1]-mi[0])/(n-1);
+      if(Number.isInteger(st) && st!==0 && mi.every((x,k)=>x===mi[0]+st*k)) monthStep=st;
     }
-  } else {
-    for(let r=srcR1;r<=srcR2;r++){
-      const vals=[]; let allNum=true;
-      for(let c=srcC1;c<=srcC2;c++){ const raw=shData[r][c]; const n=toNum(raw); if(typeof raw==='string'&&raw[0]==='='){allNum=false;break;} if(n==null&&raw!==''&&raw!=null){allNum=false;} vals.push(n); }
-      const numeric = allNum && vals.length>1 && vals.every(v=>v!=null);
-      for(let k=0;k<count;k++){
-        const srcC = srcC1 + (k % (srcC2-srcC1+1));
-        const tgtC = srcC2+1+k;
-        const raw = shData[r][srcC];
-        let out;
-        if(typeof raw==='string' && raw[0]==='=') out = shiftFormula(raw, 0, tgtC-srcC);
-        else if(numeric) out = String(seriesNext(vals, k));
-        else out = raw;
-        setCellRaw(r, tgtC, out);
-        if(shStyle[cellKey(r,srcC)]) shStyle[cellKey(r,tgtC)] = {...shStyle[cellKey(r,srcC)]};
+    const dayStep = n===1 ? 86400000 : (t[n-1]-t[0])/(n-1);
+    return i => {
+      if(i>=0 && i<n) return vals[i];
+      if(monthStep!=null){
+        const base=(+dm[0][1])*12+(+dm[0][3]-1)+monthStep*i;
+        const y=Math.floor(base/12), mo=((base%12)+12)%12;
+        const dim=new Date(Date.UTC(y,mo+1,0)).getUTCDate();
+        return fmt(y, mo+1, Math.min(+dm[0][4], dim));
       }
+      const d=new Date(t[0]+dayStep*i);
+      return fmt(d.getUTCFullYear(), d.getUTCMonth()+1, d.getUTCDate());
+    };
+  }
+  /* 요일·월·분기 목록 */
+  for(const L of FILL_LISTS){
+    const idx = strs.map(x=>L.indexOf(x));
+    if(idx.every(x=>x>=0)){
+      const m=L.length;
+      const step = n===1 ? 1 : (((idx[1]-idx[0])%m)+m)%m || 1;
+      return i => L[(((idx[0]+step*i)%m)+m)%m];
+    }
+  }
+  /* 글자 + 번호 (항목1, A-001 …) */
+  const tm = strs.map(x=>x.match(/^(.*?)(\d+)(\D*)$/));
+  if(tm.every(Boolean) && tm.every(m=>m[1]===tm[0][1] && m[3]===tm[0][3])){
+    const ns=tm.map(m=>+m[2]), w=tm[0][2].length, zp=tm[0][2][0]==='0' && w>1;
+    const step = n===1 ? 1 : (ns[n-1]-ns[0])/(n-1);
+    if(Number.isInteger(step)) return i => {
+      if(i>=0 && i<n) return vals[i];
+      let v=ns[0]+step*i; const neg=v<0; v=Math.abs(v);
+      let t2=String(v); if(zp) t2=t2.padStart(w,'0');
+      return tm[0][1]+(neg?'-':'')+t2+tm[0][3];
+    };
+  }
+  return cyc;
+}
+/* 범위(r1..r2, c1..c2)를 원본으로 dir 방향으로 count칸 채움 */
+function fillRange(r1,c1,r2,c2, dir, count, mode){
+  const vert = dir==='down' || dir==='up';
+  const fwd  = dir==='down' || dir==='right';
+  const n = vert ? r2-r1+1 : c2-c1+1;
+  if(fwd) growTo(vert ? r2+count+1 : shRows, vert ? shCols : c2+count+1);
+  const lineA = vert ? c1 : r1, lineB = vert ? c2 : r2;
+  for(let L=lineA; L<=lineB; L++){
+    const src=[];
+    for(let k=0;k<n;k++) src.push(vert ? shData[r1+k][L] : shData[L][c1+k]);
+    const g = makeSeries(src, mode||'auto');
+    for(let k=0;k<count;k++){
+      const i = fwd ? n+k : -1-k;
+      const tr = vert ? r1+i : L, tc = vert ? L : c1+i;
+      if(tr<0 || tc<0) break;
+      const si = ((i%n)+n)%n;
+      const sr = vert ? r1+si : L, sc = vert ? L : c1+si;
+      const raw = shData[sr][sc];
+      let out = (typeof raw==='string' && raw[0]==='=') ? shiftFormula(raw, tr-sr, tc-sc) : g(i);
+      if(out==null) out='';
+      setCellRaw(tr, tc, out);
+      const sk=cellKey(sr,sc), tk=cellKey(tr,tc);
+      if(shStyle[sk]) shStyle[tk] = {...shStyle[sk]}; else delete shStyle[tk];
+      shLive.add(tk);
     }
   }
 }
+let shFillMode = 'auto';
 function applyFillDrag(){
   sheetTb.querySelectorAll('td.fsel').forEach(td=>td.classList.remove('fsel'));
   const t = shFillTarget; shFillTarget=null;
@@ -3447,20 +3668,44 @@ function applyFillDrag(){
   const {r1,c1,r2,c2} = selRange();
   pushUndo();
   beginBatch();
-  if(t.dir==='down') fillCells(r1,c1,r2,c2,'down', t.r2-r2);
-  else fillCells(r1,c1,r2,c2,'right', t.c2-c2);
+  fillRange(r1,c1,r2,c2, t.dir, t.count, shFillMode);
   endBatch();
-  ancR=r1; ancC=c1; selR=t.r2; selC=t.c2;
+  ancR=Math.min(r1,t.r1); ancC=Math.min(c1,t.c1); selR=Math.max(r2,t.r2); selC=Math.max(c2,t.c2);
   renderSheet();
 }
-/* Ctrl+D / Ctrl+R: 선택 범위 안에서 첫 행/열을 아래·오른쪽으로 채움 */
+/* Ctrl+D / Ctrl+R: 위(왼쪽) 칸을 그대로 복사해 채움. 한 줄만 선택했으면 바로 위(왼쪽) 칸을 가져옴 */
 function fillDownSel(){
-  const {r1,c1,r2,c2} = selRange(); if(r2===r1) return;
-  pushUndo(); beginBatch(); fillCells(r1,c1,r1,c2,'down', r2-r1); endBatch(); renderSheet();
+  const {r1,c1,r2,c2} = selRange();
+  pushUndo(); beginBatch();
+  if(r2===r1){ if(r1>0) fillRange(r1-1,c1,r1-1,c2,'down',1,'copy'); }
+  else fillRange(r1,c1,r1,c2,'down', r2-r1,'copy');
+  endBatch(); renderSheet();
 }
 function fillRightSel(){
-  const {r1,c1,r2,c2} = selRange(); if(c2===c1) return;
-  pushUndo(); beginBatch(); fillCells(r1,c1,r2,c1,'right', c2-c1); endBatch(); renderSheet();
+  const {r1,c1,r2,c2} = selRange();
+  pushUndo(); beginBatch();
+  if(c2===c1){ if(c1>0) fillRange(r1,c1-1,r2,c1-1,'right',1,'copy'); }
+  else fillRange(r1,c1,r2,c1,'right', c2-c1,'copy');
+  endBatch(); renderSheet();
+}
+/* 채우기 핸들 더블클릭 → 옆 열 데이터가 끝나는 행까지 자동으로 채움 (엑셀과 동일)
+   옆 열이 비어 있으면 '연속 데이터 채우기' 창을 열어 끝 값을 정하게 합니다 */
+function autoFillDown(){
+  commitPendingEdit();
+  const {r1,c1,r2,c2} = selRange();
+  const has=(r,c)=> r>=0 && c>=0 && r<shRows && c<shCols && shData[r][c]!=='' && shData[r][c]!=null;
+  let end=-1;
+  for(const cc of [c1-1, c2+1]){
+    if(!has(r2+1, cc)) continue;
+    let e=r2+1; while(has(e+1, cc)) e++;
+    end=e; break;
+  }
+  if(end<=r2){ openSeries(true); return; }
+  for(let c=c1;c<=c2;c++) for(let r=r2+1;r<=end;r++) if(has(r,c)){ end=Math.min(end,r-1); break; }
+  if(end<=r2) return;
+  pushUndo(); beginBatch(); fillRange(r1,c1,r2,c2,'down',end-r2,'auto'); endBatch();
+  ancR=r1; ancC=c1; selR=end; selC=c2; renderSheet();
+  msg(T('mAutoFilled').replace('{n}', end-r2));
 }
 
 /* ── 편집 ── */
@@ -3474,7 +3719,7 @@ function caretToEnd(td){
 }
 function startEdit(r,c,initChar){
   commitPendingEdit();     /* 다른 칸을 편집 중이었다면 먼저 확정 */
-  setSel(r,c,false);
+  if(!(r===selR && c===selC)) setSel(r,c,false);   /* 범위를 선택한 채 입력하면 범위 유지 (Ctrl+Enter 용) */
   const td = cellEl(r,c);
   if(!td) return;
   shEditMode = (initChar!=null) ? 'type' : 'edit';
@@ -3524,6 +3769,22 @@ function startEdit(r,c,initChar){
 
   td.onkeydown = ev=>{
     const stop = ()=>{ ev.preventDefault(); ev.stopPropagation(); };
+    if(ev.key==='Enter' && (ev.ctrlKey || ev.metaKey)){
+      stop();
+      const rg = selRange();
+      if(rg.r1!==rg.r2 || rg.c1!==rg.c2){
+        /* Ctrl+Enter: 선택한 모든 칸에 같은 값(수식은 상대 참조로)을 한 번에 */
+        const v = td.textContent;
+        finish(false,0,0,true);
+        pushUndo(); beginBatch();
+        for(let rr=rg.r1; rr<=rg.r2; rr++) for(let cc=rg.c1; cc<=rg.c2; cc++){
+          if(shHidden.has(rr)) continue;
+          setCellRaw(rr, cc, (v[0]==='=') ? shiftFormula(v, rr-r, cc-c) : v);
+        }
+        endBatch(); renderSheet(); $('sheetScroll').focus();
+      } else finish(true,0,0);
+      return;
+    }
     if(ev.key==='Enter'){ stop(); finish(true, ev.shiftKey?-1:1, 0); return; }
     if(ev.key==='Escape'){ stop(); finish(false,0,0); return; }
     if(ev.key==='Tab'){ stop(); finish(true, 0, ev.shiftKey?-1:1); return; }
@@ -3618,13 +3879,20 @@ $('sheetScroll').addEventListener('keydown', e=>{
     const mg = mergeAt(selR,selC);
     let r=selR, c=selC;
     if(mg){ if(dr>0) r=mg.r+mg.rs-1; if(dc>0) c=mg.c+mg.cs-1; }
-    setSel(r+dr, c+dc, e.shiftKey);
+    let nr = r+dr;
+    while(dr && shHidden.has(nr) && nr>0 && nr<shRows-1) nr += dr;   /* 필터로 숨긴 행은 건너뜀 */
+    setSel(nr, c+dc, e.shiftKey);
   };
+  if(ctrl && e.key==='PageDown'){ e.preventDefault(); switchSheet(Math.min(shBook.length-1, shCur+1)); return; }
+  if(ctrl && e.key==='PageUp'){ e.preventDefault(); switchSheet(Math.max(0, shCur-1)); return; }
+  if(e.shiftKey && e.key==='F11'){ e.preventDefault(); newSheetAction(); return; }
+  if(ctrl && e.shiftKey && (e.key==='l' || e.key==='L')){ e.preventDefault(); $('shFilter').click(); return; }
+  if(e.altKey && (e.key==='=' || e.code==='Equal')){ e.preventDefault(); insertAgg('SUM'); return; }
   if(e.key==='ArrowUp') mv(-1,0);
   else if(e.key==='ArrowDown') mv(1,0);
   else if(e.key==='ArrowLeft') mv(0,-1);
   else if(e.key==='ArrowRight') mv(0,1);
-  else if(e.key==='Enter'){ e.preventDefault(); setSel(selR+(e.shiftKey?-1:1), selC, false); }
+  else if(e.key==='Enter'){ e.preventDefault(); mv(e.shiftKey?-1:1, 0); setSel(selR, selC, false); }
   else if(e.key==='Tab'){ e.preventDefault(); setSel(selR, selC+(e.shiftKey?-1:1), false); }
   else if(e.key==='Home'){ e.preventDefault(); ctrl ? setSel(0,0,e.shiftKey) : setSel(selR,0,e.shiftKey); }
   else if(e.key==='End' && ctrl){ e.preventDefault(); let mr=0,mc=0; for(let r=0;r<shRows;r++)for(let c=0;c<shCols;c++) if(shData[r][c]!==''&&shData[r][c]!=null){mr=Math.max(mr,r);mc=Math.max(mc,c);} setSel(mr,mc,e.shiftKey); }
@@ -3669,7 +3937,9 @@ function doCopy(e, cut){
   const tsv = rangeTSV(r1,c1,r2,c2);
   const styles={};
   for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++){ const st=shStyle[cellKey(r,c)]; if(st) styles[(r-r1)+','+(c-c1)]={...st}; }
-  shClip = { mode: cut?'cut':'copy', r1,c1,r2,c2, tsv, styles };
+  const raw = [];
+  for(let r=r1;r<=r2;r++) raw.push(shData[r].slice(c1, c2+1));
+  shClip = { mode: cut?'cut':'copy', r1,c1,r2,c2, tsv, styles, raw, sheet: shCur };
   if(e && e.clipboardData){ e.clipboardData.setData('text/plain', tsv); e.preventDefault(); }
   else if(navigator.clipboard) navigator.clipboard.writeText(tsv).catch(()=>{});
   msg(cut?T('mCut'):T('mCopied'));
@@ -3684,11 +3954,15 @@ function doPasteText(text){
   if(internal){
     const {r1,c1,r2,c2,mode,styles} = shClip;
     const dr=selR-r1, dc=selC-c1;
-    /* 잘라내기: 원본 지움 (겹치는 경우 먼저 원본을 백업) */
-    const src=[];
-    for(let r=r1;r<=r2;r++){ const row=[]; for(let c=c1;c<=c2;c++) row.push(shData[r][c]); src.push(row); }
+    /* 잘라내기: 원본 지움 (복사 순간의 원본을 쓰므로 다른 시트에도 붙여넣을 수 있음) */
+    const src = shClip.raw.map(r=>r.slice());
     if(mode==='cut'){
-      for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++){ setCellRaw(r,c,''); delete shStyle[cellKey(r,c)]; }
+      if(shClip.sheet===shCur){
+        for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++){ setCellRaw(r,c,''); delete shStyle[cellKey(r,c)]; }
+      } else if(shBook[shClip.sheet]){
+        const o = shBook[shClip.sheet];
+        for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++){ o.data[r][c]=''; delete o.style[cellKey(r,c)]; }
+      }
     }
     for(let r=0;r<src.length;r++) for(let c=0;c<src[r].length;c++){
       let v=src[r][c];
@@ -3799,35 +4073,40 @@ $('fRepAll').onclick = ()=>{
 };
 
 /* ── Σ 자동 합계 ── */
-$('shAutoSum').onclick = ()=>{
+function insertAgg(fn){
+  fn = fn || 'SUM';
+  commitPendingEdit();
   const {r1,c1,r2,c2} = selRange();
   const hasNum = (r,c)=> toNum(cellValue(r,c))!=null;
   pushUndo();
   if(r1===r2 && c1===c2){
     let rs=r1-1; while(rs>=0 && hasNum(rs,c1)) rs--;
-    if(rs < r1-1){ setCellRaw(r1,c1,`=SUM(${rangeRef(rs+1,c1,r1-1,c1)})`); }
+    if(rs < r1-1){ setCellRaw(r1,c1,`=${fn}(${rangeRef(rs+1,c1,r1-1,c1)})`); }
     else{
       let cs=c1-1; while(cs>=0 && hasNum(r1,cs)) cs--;
-      if(cs < c1-1) setCellRaw(r1,c1,`=SUM(${rangeRef(r1,cs+1,r1,c1-1)})`);
-      else { shUndo.pop(); msg(T('mNoNums')); return; }
+      if(cs < c1-1) setCellRaw(r1,c1,`=${fn}(${rangeRef(r1,cs+1,r1,c1-1)})`);
+      else { shUndo.pop(); msg(T('mNoNums')); return false; }
     }
     renderSheet(); setSel(r1,c1,false);
   } else if(r1===r2){
     growTo(shRows, c2+2);
-    setCellRaw(r1, c2+1, `=SUM(${rangeRef(r1,c1,r1,c2)})`);
+    setCellRaw(r1, c2+1, `=${fn}(${rangeRef(r1,c1,r1,c2)})`);
     renderSheet(); setSel(r1,c2+1,false);
   } else {
     growTo(r2+2, shCols);
     beginBatch();
     for(let c=c1;c<=c2;c++){
       let any=false; for(let r=r1;r<=r2;r++) if(hasNum(r,c)){ any=true; break; }
-      if(any) setCellRaw(r2+1, c, `=SUM(${rangeRef(r1,c,r2,c)})`);
+      if(any) setCellRaw(r2+1, c, `=${fn}(${rangeRef(r1,c,r2,c)})`);
     }
     endBatch();
     renderSheet(); setSel(r2+1,c1,false);
   }
   msg(T('mAutoSum'));
-};
+  return true;
+}
+$('shAutoSum').onclick = ()=> insertAgg('SUM');
+
 
 /* ── 행/열 추가·삽입·삭제 ── */
 $('shAddRow').onclick = ()=>{ pushUndo(); const from=shRows; shData.push(Array(shCols).fill('')); shRows++; appendRowsDOM(from); };
@@ -3895,13 +4174,12 @@ $('shDelCol').onclick = ()=>{
 
 /* ── 새 표 ── */
 $('shNew').onclick = async ()=>{
-  if(shData && shData.some(r=>r.some(c=>c!=='' && c!=null))){
+  saveActive();
+  if(shBook.length>1 || shBook.some(sh=>sh.data.some(r=>r.some(c=>c!=='' && c!=null)))){
     if(!await askConfirm(T('cfNewSheet'))) return;
   }
-  shRows=SH_ROWS_INIT; shCols=SH_COLS_INIT; shData=Array.from({length:shRows},()=>Array(shCols).fill('')); shStyle={};
-  shColW = Array(shCols).fill(SH_DEFAULT_W);
-  shUndo=[]; shRedo=[]; shClip=null; shMerges=[];
-  buildHF(); selR=0; selC=0; ancR=0; ancC=0; renderSheet(); msg(T('mNewSheet'));
+  shBook=[newSheetObj('Sheet1')]; shCur=0; loadActive(0); shClip=null; hideFltPop();
+  buildHF(); renderSheet(); renderSheetTabs(); msg(T('mNewSheet'));
 };
 
 /* 툴바의 어떤 버튼을 눌러도 편집 중이던 값이 먼저 저장되도록 */
@@ -3963,7 +4241,8 @@ function applyStyle(prop, val){
   for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++){
     const k=cellKey(r,c); shLive.add(k);
     shStyle[k] = shStyle[k] || {};
-    if(prop==='bold'||prop==='italic'||prop==='under') shStyle[k][prop] = toggleTo;
+    if(prop==='bold'||prop==='italic'||prop==='under'||prop==='wrap') shStyle[k][prop] = toggleTo;
+    else if(val==null) delete shStyle[k][prop];
     else shStyle[k][prop] = val;
   }
   recalcRender();
@@ -4009,37 +4288,54 @@ function usedRange(){
     if(shData[r][c]!=='' && shData[r][c]!=null){ mr=Math.max(mr,r); mc=Math.max(mc,c); }
   return mr<0 ? null : {r1:0,c1:0,r2:mr,c2:mc};
 }
-function sortByCol(asc){
-  const u = usedRange(); if(!u){ msg(T('mSheetEmpty')); return; }
-  if(shMerges.length){ msg(T('mSortMerged')); return; }
-  const c = selC;
-  /* 1행이 문자이고 아래에 숫자가 있으면 머리글로 간주 */
-  let start = 0;
-  const h = shData[0][c];
-  if(h!=='' && h!=null && toNum(h)==null){
-    for(let r=1;r<=u.r2;r++){ if(toNum(cellValue(r,c))!=null){ start=1; break; } }
-  }
-  pushUndo();
-  const idx = [];
-  for(let r=start;r<=u.r2;r++) idx.push(r);
+/* 블록 안의 행 순서만 바꿔 정렬 (블록 밖 열은 그대로) */
+function sortBlock(rs,re,cs,ce,key,asc){
+  const kv = r=> cellValue(r,key);
+  const idx=[]; for(let r=rs;r<=re;r++) idx.push(r);
   idx.sort((a,b)=>{
-    const x=cellValue(a,c), y=cellValue(b,c);
+    const x=kv(a), y=kv(b);
     const ex=(x===''||x==null), ey=(y===''||y==null);
-    if(ex&&ey) return 0;
-    if(ex) return 1;              /* 빈 셀은 항상 마지막 */
-    if(ey) return -1;
+    if(ex&&ey) return 0; if(ex) return 1; if(ey) return -1;     /* 빈 칸은 항상 마지막 */
     const nx=toNum(x), ny=toNum(y);
-    let cmp;
-    if(nx!=null && ny!=null) cmp = nx-ny;
-    else cmp = String(x).localeCompare(String(y));
-    return asc?cmp:-cmp;
+    let d;
+    if(nx!=null && ny!=null) d=nx-ny;
+    else if(nx!=null) d=-1; else if(ny!=null) d=1;              /* 숫자가 글자보다 앞 */
+    else d=String(x).localeCompare(String(y), undefined, {numeric:true});
+    return asc ? d : -d;
   });
-  const newData = shData.map(r=>r.slice());
-  const rowMap = {};
-  idx.forEach((srcR,i)=>{ newData[start+i]=shData[srcR].slice(); rowMap[srcR]=start+i; });
-  shData = newData;
-  remapStyles((r,cc)=> [rowMap[r]!=null? rowMap[r] : r, cc]);
-  buildHF(); renderSheet();
+  const snapD = idx.map(r=> shData[r].slice(cs, ce+1));
+  const snapS = idx.map(r=>{ const o={}; for(let c=cs;c<=ce;c++){ const k=cellKey(r,c); if(shStyle[k]) o[c]=shStyle[k]; } return o; });
+  for(let r=rs;r<=re;r++) for(let c=cs;c<=ce;c++) delete shStyle[cellKey(r,c)];
+  idx.forEach((src,i)=>{
+    const r=rs+i;
+    for(let c=cs;c<=ce;c++) shData[r][c]=snapD[i][c-cs];
+    for(const c in snapS[i]) shStyle[cellKey(r,c)]=snapS[i][c];
+  });
+  rebuildLive(); buildHF();
+}
+function sortByCol(asc){
+  commitPendingEdit();
+  if(shMerges.length){ msg(T('mSortMerged')); return; }
+  let rs, re, cs, ce;
+  const f = shFilter;
+  if(f && selC>=f.c1 && selC<=f.c2 && selR>=f.r && selR<=f.r2){
+    computeHidden(); rs=f.r+1; re=f.r2; cs=f.c1; ce=f.c2;
+  } else {
+    const g = dataRegion() || usedRange();
+    if(!g){ msg(T('mSheetEmpty')); return; }
+    rs=g.r1; re=g.r2; cs=g.c1; ce=g.c2;
+    /* 첫 행이 글자이고 아래에 숫자가 있거나, 첫 행 전체가 글자면 머리글로 봄 */
+    const h = shData[rs][selC];
+    if(h!=='' && h!=null && toNum(h)==null){
+      let numBelow=false; for(let r=rs+1;r<=re;r++) if(toNum(cellValue(r,selC))!=null){ numBelow=true; break; }
+      let allText=true; for(let c=cs;c<=ce;c++){ const v=shData[rs][c]; if(v===''||v==null||toNum(v)!=null){ allText=false; break; } }
+      if(numBelow || allText) rs++;
+    }
+  }
+  if(re<=rs){ msg(T('mSheetEmpty')); return; }
+  pushUndo();
+  sortBlock(rs, re, cs, ce, selC, asc);
+  renderSheet();
   msg(asc?T('mSortedAsc'):T('mSortedDesc'));
 }
 $('shSortAsc').onclick = ()=> sortByCol(true);
@@ -4047,8 +4343,9 @@ $('shSortDesc').onclick = ()=> sortByCol(false);
 
 /* ── 피벗 테이블 ── */
 $('shPivot').onclick = ()=>{
-  const u = usedRange();
-  if(!u || u.r2 < 1){ msg(T('mPivotNeed')); return; }
+  commitPendingEdit();
+  const u = dataRegion() || usedRange();
+  if(!u || u.r2 <= u.r1){ msg(T('mPivotNeed')); return; }
   const heads = [];
   for(let c=u.c1;c<=u.c2;c++){
     const h = String(cellValue(u.r1,c) ?? '').trim();
@@ -4061,15 +4358,16 @@ $('shPivot').onclick = ()=>{
   fill($('pvRow'),false); fill($('pvCol'),true); fill($('pvVal'),false);
   $('pvCol').value='-1';
   if(heads.length>1) $('pvVal').value=String(heads.length-1);
+  $('pvSrc').textContent = T('pvSrcLbl') + ' ' + shBook[shCur].name + '!' + rangeRef(u.r1,u.c1,u.r2,u.c2);
   const d=$('dlgPivot');
   $('pvOk').onclick = async ()=>{
     d.close();
-    await buildPivot(u, +$('pvRow').value, +$('pvCol').value, +$('pvVal').value, $('pvAgg').value);
+    await buildPivot(u, +$('pvRow').value, +$('pvCol').value, +$('pvVal').value, $('pvAgg').value, $('pvOut').value);
   };
   $('pvCancel').onclick = ()=> d.close();
   d.showModal();
 };
-async function buildPivot(u, rf, cf, vf, agg){
+async function buildPivot(u, rf, cf, vf, agg, outMode){
   const rows = [];
   for(let r=u.r1+1; r<=u.r2; r++){
     const rk = String(cellValue(r, u.c1+rf) ?? '');
@@ -4122,22 +4420,31 @@ async function buildPivot(u, rf, cf, vf, agg){
   colTot.forEach(t=>{ totLine.push(calc(t)); gTot.sum+=t.sum; gTot.cnt+=t.cnt; gTot.n+=t.n; gTot.min=Math.min(gTot.min,t.min); gTot.max=Math.max(gTot.max,t.max); });
   if(cf>=0) totLine.push(calc(gTot));
   out.push(totLine);
-  /* 결과를 현재 선택 셀 위치에 기록 */
-  const pr=selR, pc=selC;
-  let overlap=false;
-  for(let r=0;r<out.length && !overlap;r++) for(let c=0;c<out[r].length;c++){
-    const tr=pr+r, tc=pc+c;
-    if(tr<shRows && tc<shCols && shData[tr][tc]!=='' && shData[tr][tc]!=null){ overlap=true; break; }
+  /* 결과 위치: 새 시트(엑셀 기본) 또는 현재 선택 셀 */
+  const srcLabel = shBook[shCur].name + '!' + rangeRef(u.r1,u.c1,u.r2,u.c2);
+  let pr=selR, pc=selC;
+  if(outMode==='new'){
+    newSheetAction(uniqueSheetName(LANG==='ko' ? '피벗' : 'Pivot'), shCur+1);
+    pr=2; pc=0;
+  } else {
+    let overlap=false;
+    for(let r=0;r<out.length && !overlap;r++) for(let c=0;c<out[r].length;c++){
+      const tr=pr+r, tc=pc+c;
+      if(tr<shRows && tc<shCols && shData[tr][tc]!=='' && shData[tr][tc]!=null){ overlap=true; break; }
+    }
+    if(overlap && !await askConfirm(T('cfPivotOverwrite'))) return;
   }
-  if(overlap && !await askConfirm(T('cfPivotOverwrite'))) return;
   pushUndo();
   growTo(pr+out.length, pc+Math.max(...out.map(r=>r.length)));
   beginBatch();
+  if(outMode==='new'){ setCellRaw(0,0, T('pvTitle') + ': ' + srcLabel); shStyle['0,0']={bold:true, color:'#1F4E8C'}; shLive.add('0,0'); }
   out.forEach((line,r)=> line.forEach((v,c)=>{
     setCellRaw(pr+r, pc+c, v==null?'':String(v));
     const k=cellKey(pr+r,pc+c);
     if(r===0 || c===0 || r===out.length-1){ shStyle[k]={...(shStyle[k]||{}), bold:true, bg:(r===0?'#E8EEF7':(shStyle[k]||{}).bg)}; }
     else delete shStyle[k];
+    if(r>0 && c>0 && typeof v==='number') shStyle[k]={...(shStyle[k]||{}), comma:true};
+    shLive.add(k);
   }));
   endBatch();
   renderSheet();
@@ -4155,26 +4462,40 @@ $('fileSheetOpen').onchange = e=>{
   const rd=new FileReader();
   rd.onload=()=>{
     try{
+      commitPendingEdit(); hideFltPop();
       const wb=XLSX.read(new Uint8Array(rd.result),{type:'array'});
-      const ws=wb.Sheets[wb.SheetNames[0]];
-      /* 수식 보존: raw 셀에서 f(수식) 우선, 없으면 값 */
-      const ref = XLSX.utils.decode_range(ws['!ref']||'A1');
-      const nR = ref.e.r+1, nC = ref.e.c+1;
-      shRows = Math.max(SH_ROWS_INIT, nR + 50); shCols = Math.max(SH_COLS_INIT, nC + 5);
-      shData = Array.from({length:shRows},()=>Array(shCols).fill(''));
-      shStyle = {};
-      shColW = Array(shCols).fill(SH_DEFAULT_W);
-      shUndo=[]; shRedo=[];
-      for(let r=0;r<nR;r++) for(let c=0;c<nC;c++){
-        const addr = XLSX.utils.encode_cell({r,c});
-        const cell = ws[addr];
-        if(!cell) continue;
-        shData[r][c] = cell.f ? '='+cell.f : (cell.v==null?'':cell.v);
-      }
-      shMerges = (ws['!merges']||[]).map(m=>({r:m.s.r, c:m.s.c, rs:m.e.r-m.s.r+1, cs:m.e.c-m.s.c+1}))
-                  .filter(m=>m.rs>1||m.cs>1);
-      buildHF(); selR=0; selC=0; ancR=0; ancC=0; renderSheet();
-      msg(f.name + T('mXlsxImported'));
+      const book = [];
+      wb.SheetNames.forEach(name=>{
+        const ws=wb.Sheets[name];
+        const sh=newSheetObj(name);
+        const ref = XLSX.utils.decode_range(ws['!ref']||'A1');
+        const nR = ref.e.r+1, nC = ref.e.c+1;
+        sh.rows = Math.max(SH_ROWS_INIT, nR + 50); sh.cols = Math.max(SH_COLS_INIT, nC + 5);
+        sh.data = Array.from({length:sh.rows},()=>Array(sh.cols).fill(''));
+        sh.colW = Array(sh.cols).fill(SH_DEFAULT_W);
+        (ws['!cols']||[]).forEach((ci,i)=>{ if(!ci || i>=sh.cols) return; const w = ci.wpx || (ci.wch ? ci.wch*7+10 : 0); if(w) sh.colW[i]=Math.max(36,Math.round(w)); });
+        for(let r=0;r<nR;r++) for(let c=0;c<nC;c++){
+          const cell = ws[XLSX.utils.encode_cell({r,c})];
+          if(!cell) continue;
+          sh.data[r][c] = cell.f ? '='+cell.f : (cell.v==null?'':cell.v);
+          /* 표시 형식 (날짜·백분율·천 단위·통화) */
+          const z = cell.z; if(!z || cell.t!=='n' || /^General$/i.test(z)) continue;
+          const st = {};
+          if(/[yd]/i.test(z) && !/[#0]/.test(z)) st.nf='date';
+          else if(/%/.test(z)) st.pct=true;
+          else if(/₩|KRW|-412/.test(z)) st.nf='krw';
+          else if(/\$/.test(z)) st.nf='usd';
+          else if(/#,##/.test(z)) st.comma=true;
+          const dm = z.match(/0\.(0+)/); if(dm && st.nf!=='date') st.dec = dm[1].length; else if(st.pct||st.comma) st.dec=0;
+          if(Object.keys(st).length) sh.style[r+','+c]=st;
+        }
+        sh.merges = (ws['!merges']||[]).map(m=>({r:m.s.r, c:m.s.c, rs:m.e.r-m.s.r+1, cs:m.e.c-m.s.c+1})).filter(m=>m.rs>1||m.cs>1);
+        book.push(sh);
+      });
+      if(!book.length) book.push(newSheetObj('Sheet1'));
+      shBook = book; shCur = 0; loadActive(0);
+      buildHF(); renderSheet(); renderSheetTabs();
+      msg(f.name + T('mXlsxImported') + (book.length>1 ? ` (${book.length} ${T('sheetsWord')})` : ''));
     }catch(err){ msg(T('mImportFail')+err.message); }
   };
   rd.readAsArrayBuffer(f); e.target.value='';
@@ -4191,11 +4512,52 @@ function sheetToAOA(computed){
   } out.push(row); }
   return out;
 }
+function numFmtOf(st){
+  if(!st) return null;
+  if(st.nf==='date') return 'yyyy-mm-dd';
+  const d = st.dec!=null ? st.dec : (st.nf==='usd' ? 2 : 0);
+  const dp = d>0 ? '.'+'0'.repeat(d) : '';
+  if(st.pct) return '0'+dp+'%';
+  if(st.nf==='krw') return '"₩"#,##0'+dp;
+  if(st.nf==='usd') return '"$"#,##0'+dp;
+  if(st.comma) return '#,##0'+dp;
+  if(st.dec!=null) return '0'+dp;
+  return null;
+}
+function sheetToWs(sh){
+  const sid = hf.getSheetId(sh.name);
+  let maxR=-1, maxC=-1;
+  for(let r=0;r<sh.rows;r++) for(let c=0;c<sh.cols;c++) if(sh.data[r][c]!=='' && sh.data[r][c]!=null){ if(r>maxR) maxR=r; if(c>maxC) maxC=c; }
+  const ws = {};
+  for(let r=0;r<=maxR;r++) for(let c=0;c<=maxC;c++){
+    const raw = sh.data[r][c]; if(raw==='' || raw==null) continue;
+    const addr = XLSX.utils.encode_cell({r,c});
+    let cell;
+    if(typeof raw==='string' && raw[0]==='='){
+      let v=null; try{ v = hf.getCellValue({sheet:sid, row:r, col:c}); }catch(e){}
+      cell = { f: raw.slice(1) };
+      if(typeof v==='number'){ cell.t='n'; cell.v=v; }
+      else if(typeof v==='boolean'){ cell.t='b'; cell.v=v; }
+      else { cell.t='s'; cell.v = (v && typeof v==='object') ? String(v.value||'#ERR') : (v==null?'':String(v)); }
+    } else if(typeof raw==='boolean') cell={t:'b', v:raw};
+    else {
+      const n = toNum(raw);
+      if(n!=null) cell={t:'n', v:n};
+      else { let sv=String(raw); if(sv[0]==="'") sv=sv.slice(1); cell={t:'s', v:sv}; }
+    }
+    const z = numFmtOf(sh.style[r+','+c]); if(z && cell.t==='n') cell.z = z;
+    ws[addr] = cell;
+  }
+  ws['!ref'] = XLSX.utils.encode_range({s:{r:0,c:0}, e:{r:Math.max(0,maxR), c:Math.max(0,maxC)}});
+  if(sh.merges.length) ws['!merges'] = sh.merges.map(m=>({s:{r:m.r,c:m.c}, e:{r:m.r+m.rs-1, c:m.c+m.cs-1}}));
+  ws['!cols'] = sh.colW.slice(0, Math.max(1,maxC+1)).map(w=>({wpx:w}));
+  return ws;
+}
 $('shSaveXlsx').onclick = async ()=>{
   if(!await needLib('xlsx')) return;
-  const ws=XLSX.utils.aoa_to_sheet(sheetToAOA(true));
-  if(shMerges.length) ws['!merges'] = shMerges.map(m=>({s:{r:m.r,c:m.c}, e:{r:m.r+m.rs-1, c:m.c+m.cs-1}}));
-  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Sheet1');
+  commitPendingEdit(); saveActive();
+  const wb=XLSX.utils.book_new();
+  shBook.forEach(sh=> XLSX.utils.book_append_sheet(wb, sheetToWs(sh), sh.name.slice(0,31)));
   const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});
   await download(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}), T('fnTable')+new Date().toISOString().slice(0,10)+'.xlsx');
 };
@@ -4568,7 +4930,32 @@ const HELP_CONTENT = {
   <li><b>Σ 자동합계</b>: 범위 선택 후 Σ 버튼 클릭 — 알맞은 SUM 수식을 자동 삽입</li>
 </ul>
 <h4>자동 채우기</h4>
-<p>선택 범위 오른쪽 하단 모서리의 <b>■ 핸들</b>을 드래그 — 숫자는 등차수열, 수식은 참조 이동.</p>
+<ul>
+  <li>세로로 <b>1, 2</b>를 넣고 두 칸을 선택한 뒤 오른쪽 아래 <b>■ 핸들을 더블클릭</b>하면, 옆 열에 데이터가 있는 마지막 행까지 3, 4, 5…가 한 번에 채워집니다.
+      옆 열이 비어 있으면 <b>연속 데이터 채우기</b> 창이 열려 끝 값(예: 100)만 넣으면 됩니다.</li>
+  <li>■ 핸들을 <b>끌면</b> 위·아래·왼쪽·오른쪽 어느 방향으로든 이어서 채웁니다. 한 칸짜리 숫자는 복사되고, <b>Ctrl</b>을 누른 채 끌면 1씩 늘어납니다.</li>
+  <li>날짜(2026-11-01), 요일(월·화), 월(1월·Jan), 분기(1분기·Q1), <b>항목1 → 항목2</b> 같은 글자+번호도 알아서 이어집니다. 수식은 참조가 함께 옮겨집니다.</li>
+  <li><b>연속 채우기</b> 버튼: 시작 값·단계 값·종료 값으로 번호, 곱하기 급수, 날짜를 채웁니다.</li>
+  <li><b>Ctrl+Enter</b>: 범위를 선택하고 값을 입력한 뒤 Ctrl+Enter — 선택한 모든 칸에 한 번에 들어갑니다.</li>
+</ul>
+<h4>시트</h4>
+<ul>
+  <li>아래쪽 <b>＋</b>로 시트를 추가하고, 탭을 <b>더블클릭</b>해 이름을 바꿉니다. 탭을 <b>오른쪽 클릭</b>하면 복제·삭제·순서 이동이 있습니다.</li>
+  <li><b>Ctrl+PageUp / PageDown</b>으로 시트를 오가며, <b>Shift+F11</b>은 새 시트입니다.</li>
+  <li>다른 시트 값을 수식에서 쓸 수 있습니다: <code>=Sheet2!A1</code>, <code>=SUM('매출 2026'!B2:B20)</code>. 시트 이름을 바꾸면 수식도 함께 바뀝니다.</li>
+  <li>엑셀 파일을 열면 모든 시트가 열리고, 저장할 때도 모든 시트·수식·표시 형식·열 너비·병합이 함께 저장됩니다.</li>
+</ul>
+<h4>필터 · 정렬</h4>
+<ul>
+  <li>표 안의 아무 칸이나 선택하고 <b>필터</b>(Ctrl+Shift+L) — 머리글에 ▾ 단추가 생깁니다. 눌러서 보고 싶은 값만 고르거나, 그 열로 정렬하세요.</li>
+  <li>↑·↓ 정렬은 선택한 칸이 속한 표 전체를 그 열 기준으로 정렬하며, 머리글 행은 자동으로 제외됩니다.</li>
+</ul>
+<h4>서식</h4>
+<ul>
+  <li><b>테두리</b>(모든 테두리·바깥쪽·굵게·아래쪽 이중), <b>↵ 줄 바꿈</b>, <b>글자 크기</b>, <b>표시 형식</b>(숫자·₩·$·%·날짜).</li>
+  <li>열 머리글 경계를 <b>더블클릭</b>하면 열 너비가 내용에 맞춰집니다.</li>
+  <li><b>fx 함수</b>에서 고르면 <code>=함수(</code>가 입력되고, 칸을 클릭·드래그해 범위를 넣을 수 있습니다.</li>
+</ul>
 <h4>입력하며 이동하기</h4>
 <p>셀에 바로 타이핑한 뒤에는 <b>방향키만 눌러도 입력이 저장되고 그 방향으로 이동</b>합니다. Enter는 아래, Tab은 오른쪽으로 한 칸씩 갑니다.</p>
 <ul>
@@ -4599,7 +4986,7 @@ const HELP_CONTENT = {
 <h4>셀 병합</h4>
 <p>범위 선택 → <b>병합</b> 버튼. 같은 범위를 다시 선택하고 병합 버튼을 누르면 해제됩니다.</p>
 <h4>피벗 테이블</h4>
-<p>데이터 범위 선택 → <b>피벗</b> 버튼 → 행/열/값 필드와 계산 방식 선택 → 현재 셀 위치에 피벗 표 생성.</p>
+<p>표 안의 한 칸(또는 범위)을 선택 → <b>피벗</b> → 행·열·값 필드와 계산(합계·개수·평균·최소·최대)을 고르면, 엑셀처럼 <b>새 시트</b>에 피벗 표가 만들어집니다. '현재 셀 위치'를 고르면 지금 시트에 넣습니다.</p>
 <h4>열기 / 저장</h4>
 <ul>
   <li>열기: <span class="tag">.xlsx</span> <span class="tag">.xls</span> <span class="tag">.csv</span></li>
@@ -4793,7 +5180,24 @@ const HELP_CONTENT = {
   <li><b>Σ AutoSum</b>: select a range and click Σ to insert the right SUM formula</li>
 </ul>
 <h4>Auto-fill</h4>
-<p>Drag the <b>■ handle</b> at the bottom-right of a selection — numbers extend as a series, formulas shift their references.</p>
+<ul>
+  <li>Type <b>1, 2</b> down a column, select both, then <b>double-click the ■ handle</b> — it fills 3, 4, 5… down to the last row of the neighbouring column.
+      If that column is empty, the <b>Fill series</b> dialog opens so you can enter a stop value (e.g. 100).</li>
+  <li><b>Drag</b> the handle in any direction. A single number is copied; hold <b>Ctrl</b> while dragging to count up by 1.</li>
+  <li>Dates, weekdays, months (Jan / 1월), quarters (Q1) and text with numbers (<b>Item1 → Item2</b>) continue automatically.</li>
+  <li><b>Ctrl+Enter</b> puts what you typed into every selected cell.</li>
+</ul>
+<h4>Sheets</h4>
+<ul>
+  <li><b>＋</b> at the bottom adds a sheet; double-click a tab to rename, right-click for duplicate / delete / move.</li>
+  <li><b>Ctrl+PageUp / PageDown</b> switch sheets, <b>Shift+F11</b> inserts one. Reference other sheets with <code>=Sheet2!A1</code>.</li>
+  <li>Excel files open and save with all sheets, formulas, number formats, column widths and merges.</li>
+</ul>
+<h4>Filter, sort & formatting</h4>
+<ul>
+  <li><b>Filter</b> (Ctrl+Shift+L) adds ▾ buttons to the header row to pick values or sort.</li>
+  <li>Borders, wrap text, font size, number formats (₩, $, %, date); double-click a column border to AutoFit.</li>
+</ul>
 <h4>Type and move</h4>
 <p>After typing directly into a cell, <b>an arrow key commits the entry and moves in that direction</b>. Enter moves down one cell, Tab moves right one cell.</p>
 <ul>
@@ -4824,7 +5228,7 @@ const HELP_CONTENT = {
 <h4>Merge cells</h4>
 <p>Select a range → click <b>Merge</b>. Select the same range again and click Merge to unmerge.</p>
 <h4>Pivot table</h4>
-<p>Select data → click <b>Pivot</b> → choose row / column / value fields and aggregate → pivot table is placed at the active cell.</p>
+<p>Select a cell in your table → <b>Pivot</b> → choose row / column / value fields and aggregate. Like Excel, the result goes to a <b>new sheet</b> (or the active cell if you choose).</p>
 <h4>Open / Save</h4>
 <ul>
   <li>Open: <span class="tag">.xlsx</span> <span class="tag">.xls</span> <span class="tag">.csv</span></li>
@@ -5841,6 +6245,10 @@ sheetTb.addEventListener('contextmenu', e=>{
     '-',
     [T('cxMerge'),  ()=> $('shMerge').click()],
     [T('cxClear'),  ()=> clearRange()],
+    '-',
+    [T('cxAutoFit'), ()=>{ const g=selRange(); autoFitCols(g.c1, g.c2); }],
+    [T('cxFilter'),  ()=> $('shFilter').click()],
+    [T('cxFillSeries'), ()=> openSeries(false)],
   ]);
 });
 async function ctxPaste(){
@@ -5883,6 +6291,480 @@ document.addEventListener('keydown', e=>{
 });
 document.querySelectorAll('input[type=file]').forEach(f=> f.addEventListener('change', ()=>{ dirty = true; }));
 $('sheetScroll').addEventListener('keydown', ()=>{ dirty = true; });
+
+/* ═══════════════ 표 모드 확장: 시트 · 필터 · 연속 채우기 · 서식 ═══════════════ */
+Object.assign(I18N.ko, {
+  shFilter:'필터', tShFilter:'머리글에 ▾ 단추를 달아 값으로 걸러 봅니다 (Ctrl+Shift+L)',
+  shSeries:'연속 채우기', tShSeries:'시작 값·단계 값·종료 값을 정해 번호나 날짜를 한 번에 채웁니다',
+  optFunc:'fx 함수', tShFunc:'함수 넣기 — 고르면 =함수( 가 입력되고, 칸을 클릭해 범위를 넣을 수 있습니다',
+  tShWrap:'텍스트 줄 바꿈', tShFontSize:'글자 크기 (pt)', fsLabel:'크기',
+  tShBorder:'테두리', bdLabel:'테두리', bdAll:'모든 테두리', bdOuter:'바깥쪽 테두리', bdThick:'굵은 바깥쪽',
+  bdBottom:'아래쪽 테두리', bdDouble:'아래쪽 이중', bdNone:'테두리 없음',
+  tShNumFmt:'표시 형식', nfLabel:'표시 형식', nfGeneral:'일반', nfNum:'숫자 (1,000)', nfKrw:'통화 (₩)', nfUsd:'통화 ($)', nfPct:'백분율 (%)', nfDate:'날짜',
+  tShAddSheet:'새 시트 (Shift+F11)', tShTab:'클릭: 이동 · 더블클릭: 이름 바꾸기 · 오른쪽 클릭: 메뉴',
+  stRename:'이름 바꾸기', stDup:'시트 복제', stDel:'시트 삭제', stLeft:'왼쪽으로 이동', stRight:'오른쪽으로 이동', stNew:'새 시트 삽입',
+  mLastSheet:'시트가 하나뿐이라 삭제할 수 없습니다.', cfDelSheet:'"{n}" 시트를 삭제할까요? 되돌릴 수 없습니다.',
+  mBadSheetName:'시트 이름은 31자 이내이고 [ ] : * ? / \\ 는 쓸 수 없습니다.', mDupSheetName:'같은 이름의 시트가 이미 있습니다.',
+  sheetsWord:'개 시트',
+  mFilterOn:'필터를 켰습니다. 머리글의 ▾ 를 눌러 값을 고르세요.', mFilterOff:'필터를 해제했습니다.',
+  mFilterNeed:'머리글과 데이터가 있는 표 안을 선택한 뒤 눌러 주세요.', mFiltered:'{t}행 중 {v}행이 보입니다.',
+  fSortAsc:'오름차순 정렬', fSortDesc:'내림차순 정렬', fClear:'이 열의 필터 해제', fSearch:'검색', fAll:'(모두 선택)', fBlank:'(빈 셀)',
+  dlgSeriesTitle:'연속 데이터 채우기', srDir:'방향', srCol:'열 (아래로)', srRow:'행 (오른쪽으로)', srType:'유형',
+  srLin:'선형 (더하기)', srGrow:'급수 (곱하기)', srDate:'날짜 (일 단위)', srStart:'시작 값', srStep:'단계 값', srStop:'종료 값',
+  srHint:'종료 값을 넣으면 그 값까지 채우고, 비워 두면 선택한 범위만 채웁니다.',
+  mSeriesNeedStop:'종료 값을 넣거나, 채울 범위를 먼저 선택해 주세요.',
+  mSeriesBad:'시작 값과 단계 값은 숫자여야 합니다. (날짜는 2026-11-01 형식)', mSeriesDone:'{n}칸을 채웠습니다.',
+  mAutoFilled:'{n}행을 자동으로 채웠습니다.', mFillAsk:'옆 열에 데이터가 없어 어디까지 채울지 정해 주세요.',
+  pvLblOut:'위치', pvOutNew:'새 시트', pvOutHere:'현재 셀 위치', pvSrcLbl:'원본 범위:', pvTitle:'피벗',
+  pvHint:'첫 행을 머리글로 봅니다. 여러 칸을 선택했으면 그 범위를, 한 칸만 선택했으면 그 칸이 속한 표 전체를 원본으로 씁니다.',
+  cxAutoFit:'열 너비 자동 맞춤', cxFilter:'필터 켜기 / 끄기', cxFillSeries:'연속 데이터 채우기…',
+  mAutoFit:'열 너비를 내용에 맞췄습니다.',
+  statHintSheet:'■ 핸들 끌기·더블클릭으로 자동 채우기 · =SUM(A1:A10) 수식 · Ctrl+Enter 범위에 한 번에 입력 · Ctrl+PageUp/Down 시트 이동 · Ctrl+Shift+L 필터',
+});
+Object.assign(I18N.en, {
+  shFilter:'Filter', tShFilter:'Add ▾ filter buttons to the header row (Ctrl+Shift+L)',
+  shSeries:'Fill series', tShSeries:'Fill numbers or dates from a start value, step and stop value',
+  optFunc:'fx Function', tShFunc:'Insert a function — types =FUNC( so you can click cells for the range',
+  tShWrap:'Wrap text', tShFontSize:'Font size (pt)', fsLabel:'Size',
+  tShBorder:'Borders', bdLabel:'Borders', bdAll:'All borders', bdOuter:'Outside borders', bdThick:'Thick outside',
+  bdBottom:'Bottom border', bdDouble:'Double bottom', bdNone:'No border',
+  tShNumFmt:'Number format', nfLabel:'Format', nfGeneral:'General', nfNum:'Number (1,000)', nfKrw:'Currency (₩)', nfUsd:'Currency ($)', nfPct:'Percent (%)', nfDate:'Date',
+  tShAddSheet:'New sheet (Shift+F11)', tShTab:'Click: open · Double-click: rename · Right-click: menu',
+  stRename:'Rename', stDup:'Duplicate sheet', stDel:'Delete sheet', stLeft:'Move left', stRight:'Move right', stNew:'Insert new sheet',
+  mLastSheet:'You cannot delete the only sheet.', cfDelSheet:'Delete sheet "{n}"? This cannot be undone.',
+  mBadSheetName:'Sheet names must be 31 characters or fewer and cannot contain [ ] : * ? / \\', mDupSheetName:'A sheet with that name already exists.',
+  sheetsWord:'sheets',
+  mFilterOn:'Filter on. Click ▾ in the header to choose values.', mFilterOff:'Filter removed.',
+  mFilterNeed:'Select a cell inside a table with a header row and data, then try again.', mFiltered:'{v} of {t} rows shown.',
+  fSortAsc:'Sort ascending', fSortDesc:'Sort descending', fClear:'Clear filter from this column', fSearch:'Search', fAll:'(Select all)', fBlank:'(Blanks)',
+  dlgSeriesTitle:'Fill series', srDir:'Direction', srCol:'Columns (down)', srRow:'Rows (right)', srType:'Type',
+  srLin:'Linear (add)', srGrow:'Growth (multiply)', srDate:'Date (days)', srStart:'Start', srStep:'Step', srStop:'Stop',
+  srHint:'With a stop value it fills up to that value; leave it blank to fill only the selected range.',
+  mSeriesNeedStop:'Enter a stop value, or select the range to fill first.',
+  mSeriesBad:'Start and step must be numbers (dates as 2026-11-01).', mSeriesDone:'Filled {n} cells.',
+  mAutoFilled:'Auto-filled {n} rows.', mFillAsk:'The neighbouring column is empty — choose how far to fill.',
+  pvLblOut:'Place in', pvOutNew:'New sheet', pvOutHere:'Active cell', pvSrcLbl:'Source:', pvTitle:'Pivot',
+  pvHint:'The first row is treated as headers. A multi-cell selection is used as-is; a single cell uses the whole table around it.',
+  cxAutoFit:'AutoFit column width', cxFilter:'Toggle filter', cxFillSeries:'Fill series…',
+  mAutoFit:'Column width fitted to content.',
+  statHintSheet:'Drag or double-click the ■ handle to auto-fill · formulas like =SUM(A1:A10) · Ctrl+Enter fills the selection · Ctrl+PageUp/Down switch sheets · Ctrl+Shift+L filter',
+});
+
+/* ── 시트 탭 ── */
+const BAD_SHEET = /[\[\]:*?\/\\]/;
+function uniqueSheetName(base){
+  let n=1, nm;
+  const has = x => shBook.some(sh=>sh.name.toLowerCase()===x.toLowerCase());
+  do{ nm = base + n; n++; }while(has(nm));
+  return nm;
+}
+function sheetRefName(n){ return /^[A-Za-z_][A-Za-z0-9_]*$/.test(n) ? n : "'"+n.replace(/'/g,"''")+"'"; }
+function renderSheetTabs(){
+  const box = $('shTabList'); if(!box) return;
+  box.innerHTML = '';
+  shBook.forEach((sh,i)=>{
+    const d = document.createElement('div');
+    d.className = 'shTab' + (i===shCur ? ' on' : '');
+    d.dataset.i = i; d.textContent = sh.name; d.title = T('tShTab');
+    box.appendChild(d);
+  });
+  $('shFreeze').classList.toggle('primary', !!shFrozen);
+  $('shFilter').classList.toggle('primary', !!shFilter);
+}
+$('shTabList').addEventListener('mousedown', e=>{
+  const t = e.target.closest('.shTab'); if(!t || e.target.tagName==='INPUT') return;
+  if(e.button===0) switchSheet(+t.dataset.i);
+});
+$('shTabList').addEventListener('dblclick', e=>{
+  const t = e.target.closest('.shTab'); if(!t || e.target.tagName==='INPUT') return;
+  renameSheetUI(+t.dataset.i);
+});
+$('shTabList').addEventListener('contextmenu', e=>{
+  const t = e.target.closest('.shTab'); if(!t) return;
+  e.preventDefault();
+  const i = +t.dataset.i;
+  if(i!==shCur) switchSheet(i);
+  showCtx(e.clientX, e.clientY, [
+    [T('stNew'),    ()=> newSheetAction(null, shCur+1)],
+    [T('stRename'), ()=> renameSheetUI(shCur)],
+    [T('stDup'),    ()=> dupSheet(shCur)],
+    [T('stDel'),    ()=> deleteSheet(shCur)],
+    '-',
+    [T('stLeft'),   ()=> moveSheet(shCur,-1)],
+    [T('stRight'),  ()=> moveSheet(shCur, 1)],
+  ]);
+});
+$('shAddSheet').onclick = ()=> newSheetAction();
+
+function switchSheet(i){
+  if(i===shCur || !shBook[i]) return;
+  commitPendingEdit(); hideFltPop();
+  saveActive(); loadActive(i);
+  renderSheet(); renderSheetTabs();
+  const el=$('sheetScroll'), sc=shBook[i].scroll||[0,0];
+  el.scrollTop=sc[0]; el.scrollLeft=sc[1];
+  el.focus();
+}
+function newSheetAction(name, at){
+  commitPendingEdit(); hideFltPop(); saveActive();
+  const nm = name || uniqueSheetName('Sheet');
+  const idx = (at==null) ? shBook.length : Math.max(0, Math.min(at, shBook.length));
+  shBook.splice(idx, 0, newSheetObj(nm));
+  loadActive(idx);
+  buildHF(); renderSheet(); renderSheetTabs();
+  const el=$('sheetScroll'); el.scrollTop=0; el.scrollLeft=0; el.focus();
+  return idx;
+}
+function dupSheet(i){
+  commitPendingEdit(); saveActive();
+  const src = shBook[i];
+  const base = src.name.replace(/ \(\d+\)$/,'').slice(0,24);
+  let n=2, nm; do{ nm = `${base} (${n++})`; }while(shBook.some(x=>x.name.toLowerCase()===nm.toLowerCase()));
+  const c = Object.assign(newSheetObj(nm), {
+    rows:src.rows, cols:src.cols, data:src.data.map(r=>r.slice()),
+    style:JSON.parse(JSON.stringify(src.style)), colW:src.colW.slice(),
+    merges:src.merges.map(m=>({...m})), frozen:src.frozen });
+  shBook.splice(i+1, 0, c);
+  loadActive(i+1); buildHF(); renderSheet(); renderSheetTabs();
+}
+async function deleteSheet(i){
+  if(shBook.length<=1){ msg(T('mLastSheet')); return; }
+  if(!await askConfirm(T('cfDelSheet').replace('{n}', shBook[i].name))) return;
+  commitPendingEdit(); hideFltPop(); saveActive();
+  shBook.splice(i,1);
+  loadActive(Math.min(i, shBook.length-1));
+  buildHF(); renderSheet(); renderSheetTabs();
+}
+function moveSheet(i,d){
+  const j=i+d; if(j<0 || j>=shBook.length) return;
+  saveActive();
+  const act = shBook[shCur];
+  [shBook[i], shBook[j]] = [shBook[j], shBook[i]];
+  shCur = shBook.indexOf(act);
+  renderSheetTabs();
+}
+function renameSheet(i, nm){
+  nm = String(nm||'').trim();
+  const old = shBook[i].name;
+  if(!nm || nm===old) return true;
+  if(nm.length>31 || BAD_SHEET.test(nm) || nm[0]==="'" || nm.slice(-1)==="'"){ msg(T('mBadSheetName')); return false; }
+  if(shBook.some((x,k)=>k!==i && x.name.toLowerCase()===nm.toLowerCase())){ msg(T('mDupSheetName')); return false; }
+  saveActive();
+  const esc = t => t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const re1 = new RegExp("'"+esc(old.replace(/'/g,"''"))+"'!", 'gi');
+  const re2 = new RegExp("(^|[^A-Za-z0-9_.'\\u3131-\\uD79D])"+esc(old)+"!", 'gi');
+  const nref = sheetRefName(nm)+'!';
+  /* 다른 시트의 수식이 가리키는 시트 이름도 함께 바꿈 */
+  shBook.forEach(sh=> sh.data.forEach(row=>{
+    for(let c=0;c<row.length;c++){
+      const v=row[c];
+      if(typeof v==='string' && v[0]==='=') row[c] = v.replace(re1, ()=>nref).replace(re2, (m,p)=>p+nref);
+    }
+  }));
+  shBook[i].name = nm;
+  buildHF(); renderSheet(); renderSheetTabs();
+  return true;
+}
+function renameSheetUI(i){
+  const tab = $('shTabList').children[i]; if(!tab) return;
+  const inp = document.createElement('input');
+  inp.value = shBook[i].name;
+  tab.textContent=''; tab.appendChild(inp); inp.focus(); inp.select();
+  let done=false;
+  const fin = ok=>{ if(done) return; done=true; if(ok) renameSheet(i, inp.value); renderSheetTabs(); };
+  inp.onkeydown = e=>{ e.stopPropagation(); if(e.key==='Enter'){ e.preventDefault(); fin(true); } else if(e.key==='Escape'){ e.preventDefault(); fin(false); } };
+  inp.onblur = ()=> fin(true);
+}
+
+/* ── 연속된 표 영역 (엑셀의 '현재 영역') ── */
+function currentRegion(r,c){
+  const has=(rr,cc)=> rr>=0 && cc>=0 && rr<shRows && cc<shCols && shData[rr][cc]!=='' && shData[rr][cc]!=null;
+  let r1=r, r2=r, c1=c, c2=c, changed=true;
+  const rowHas = rr=>{ for(let cc=Math.max(0,c1-1); cc<=Math.min(shCols-1,c2+1); cc++) if(has(rr,cc)) return true; return false; };
+  const colHas = cc=>{ for(let rr=Math.max(0,r1-1); rr<=Math.min(shRows-1,r2+1); rr++) if(has(rr,cc)) return true; return false; };
+  while(changed){
+    changed=false;
+    if(r1>0 && rowHas(r1-1)){ r1--; changed=true; }
+    if(r2<shRows-1 && rowHas(r2+1)){ r2++; changed=true; }
+    if(c1>0 && colHas(c1-1)){ c1--; changed=true; }
+    if(c2<shCols-1 && colHas(c2+1)){ c2++; changed=true; }
+  }
+  return (has(r,c) || r1!==r2 || c1!==c2) ? {r1,c1,r2,c2} : null;
+}
+function dataRegion(){
+  const g = selRange();
+  if(g.r1!==g.r2 || g.c1!==g.c2){
+    const u = usedRange(); if(!u) return null;
+    const r2=Math.min(g.r2,u.r2), c2=Math.min(g.c2,u.c2);
+    return (r2>=g.r1 && c2>=g.c1) ? {r1:g.r1, c1:g.c1, r2, c2} : null;
+  }
+  return currentRegion(selR, selC);
+}
+
+/* ── 자동 필터 ── */
+function computeHidden(){
+  const h = new Set(); const f = shFilter; if(!f) return h;
+  const rowHas = r=>{ for(let c=f.c1;c<=f.c2;c++){ const v=shData[r] && shData[r][c]; if(v!=='' && v!=null) return true; } return false; };
+  let r2 = f.r2; while(r2+1<shRows && rowHas(r2+1)) r2++;   /* 아래에 이어 붙인 데이터도 포함 */
+  f.r2 = r2;
+  const cols = Object.keys(f.crit).map(Number);
+  if(!cols.length) return h;
+  for(let r=f.r+1; r<=r2; r++){
+    for(const c of cols){ if(!f.crit[c].has(cellDisplay(r,c))){ h.add(r); break; } }
+  }
+  return h;
+}
+function decorateFilter(){
+  if(!shCellEls) return;
+  sheetTb.querySelectorAll('.fbtn').forEach(b=>b.remove());
+  if(!shFilter) return;
+  for(let c=shFilter.c1; c<=shFilter.c2; c++){
+    const td = shCellEls[shFilter.r+','+c]; if(!td) continue;
+    const b = document.createElement('span');
+    b.className = 'fbtn' + (shFilter.crit[c] ? ' act' : '');
+    b.dataset.fc = c; b.textContent = shFilter.crit[c] ? '⛉' : '▾';
+    td.prepend(b);
+  }
+}
+function applyHidden(){
+  shHidden = computeHidden();
+  const tb = sheetTb.tBodies[0]; if(!tb){ renderSheet(); return; }
+  for(let r=0; r<tb.rows.length; r++) tb.rows[r].style.display = shHidden.has(r) ? 'none' : '';
+  decorateFilter(); paintSel();
+  if(shFilter && Object.keys(shFilter.crit).length){
+    const t = shFilter.r2 - shFilter.r;
+    msg(T('mFiltered').replace('{v}', t - shHidden.size).replace('{t}', t));
+  }
+}
+function dropFilter(){
+  if(!shFilter) return;
+  shFilter = null; shHidden = new Set(); hideFltPop(); renderSheetTabs();
+}
+$('shFilter').onclick = ()=>{
+  commitPendingEdit();
+  if(shFilter){ dropFilter(); renderSheet(); msg(T('mFilterOff')); return; }
+  const g = dataRegion();
+  if(!g || g.r2<=g.r1){ msg(T('mFilterNeed')); return; }
+  shFilter = { r:g.r1, c1:g.c1, c2:g.c2, r2:g.r2, crit:{} };
+  renderSheet(); renderSheetTabs(); msg(T('mFilterOn'));
+};
+let fltPop = null;
+function hideFltPop(){ if(fltPop){ fltPop.remove(); fltPop=null; } }
+document.addEventListener('mousedown', e=>{ if(fltPop && !fltPop.contains(e.target) && !e.target.closest('.fbtn')) hideFltPop(); });
+function openFilterPop(c, anchor){
+  if(fltPop && +fltPop.dataset.c===c){ hideFltPop(); return; }
+  hideFltPop();
+  const f = shFilter; if(!f) return;
+  computeHidden();
+  const other = Object.keys(f.crit).map(Number).filter(x=>x!==c);
+  const vals = new Set();
+  for(let r=f.r+1; r<=f.r2; r++){
+    let ok=true; for(const oc of other){ if(!f.crit[oc].has(cellDisplay(r,oc))){ ok=false; break; } }
+    if(ok) vals.add(cellDisplay(r,c));
+  }
+  const keys = [...vals].sort((a,b)=>{
+    if(a==='') return 1; if(b==='') return -1;
+    const na=toNum(a), nb=toNum(b);
+    if(na!=null && nb!=null) return na-nb;
+    return a.localeCompare(b, undefined, {numeric:true});
+  });
+  const cur = f.crit[c];
+  const pop = document.createElement('div'); pop.id='fltPop'; pop.dataset.c=c;
+  pop.innerHTML =
+    `<div class="mi" data-act="asc">↑ ${T('fSortAsc')}</div><div class="mi" data-act="desc">↓ ${T('fSortDesc')}</div><div class="msep"></div>` +
+    (cur ? `<div class="mi" data-act="clear">✕ ${T('fClear')}</div><div class="msep"></div>` : '') +
+    `<input type="text" class="fsearch" placeholder="${T('fSearch')}"><div class="flist">` +
+    `<label><input type="checkbox" data-all="1"${!cur?' checked':''}> ${T('fAll')}</label>` +
+    keys.map((k,i)=>`<label data-k="${i}"><input type="checkbox" data-i="${i}"${(!cur||cur.has(k))?' checked':''}> ${escHtml(k===''?T('fBlank'):k)}</label>`).join('') +
+    `</div><div class="fbtns"><button data-act="cancel">${T('btnCancel')}</button><button class="primary" data-act="ok">${T('btnOk')}</button></div>`;
+  document.body.appendChild(pop); fltPop = pop;
+  const rc = anchor.getBoundingClientRect();
+  pop.style.left = Math.max(4, Math.min(rc.left - 200, innerWidth - pop.offsetWidth - 8)) + 'px';
+  pop.style.top  = Math.max(4, Math.min(rc.bottom + 4, innerHeight - pop.offsetHeight - 8)) + 'px';
+  const boxes = [...pop.querySelectorAll('input[data-i]')];
+  const allBox = pop.querySelector('input[data-all]');
+  const visible = b => b.parentNode.style.display !== 'none';
+  const syncAll = ()=>{ const v=boxes.filter(visible); allBox.checked = v.length>0 && v.every(b=>b.checked); };
+  syncAll();
+  allBox.onchange = ()=> boxes.filter(visible).forEach(b=> b.checked = allBox.checked);
+  boxes.forEach(b=> b.onchange = syncAll);
+  pop.querySelector('.fsearch').oninput = e=>{
+    const q = e.target.value.toLowerCase();
+    boxes.forEach((b,i)=>{ const show = !q || keys[i].toLowerCase().includes(q); b.parentNode.style.display = show?'':'none'; if(q) b.checked = show; });
+    syncAll();
+  };
+  pop.onclick = e=>{
+    const act = e.target.dataset && e.target.dataset.act; if(!act) return;
+    if(act==='cancel'){ hideFltPop(); return; }
+    if(act==='asc' || act==='desc'){
+      hideFltPop(); pushUndo();
+      sortBlock(f.r+1, f.r2, f.c1, f.c2, c, act==='asc');
+      renderSheet(); msg(act==='asc' ? T('mSortedAsc') : T('mSortedDesc')); return;
+    }
+    if(act==='clear'){ delete f.crit[c]; hideFltPop(); applyHidden(); return; }
+    if(act==='ok'){
+      const chosen = keys.filter((k,i)=> boxes[i].checked && visible(boxes[i]));
+      if(chosen.length===keys.length) delete f.crit[c];
+      else f.crit[c] = new Set(chosen);
+      hideFltPop(); applyHidden();
+    }
+  };
+  pop.querySelector('.fsearch').focus();
+}
+/* 행·열을 넣거나 지우면 필터 범위가 어긋나므로 필터를 먼저 해제 */
+['shInsRow','shDelRow','shInsCol','shDelCol'].forEach(id=>{
+  const b=$(id), orig=b.onclick;
+  b.onclick = (...a)=>{ dropFilter(); return orig.apply(b, a); };
+});
+
+/* ── 연속 데이터 채우기 (홈 → 채우기 → 계열) ── */
+let srFromHandle = false;
+function openSeries(fromHandle){
+  if(!sheetReady) return;
+  commitPendingEdit();
+  srFromHandle = !!fromHandle;
+  const g = selRange();
+  const first = cellValue(g.r1, g.c1);
+  const vert = (g.r2>g.r1) || (g.c2===g.c1);
+  $('srDir').value = vert ? 'col' : 'row';
+  $('srStart').value = (first===''||first==null) ? '1' : String(first);
+  const isDate = DATE_RE.test(String(first));
+  $('srType').value = isDate ? 'date' : 'lin';
+  let step = 1;
+  const second = vert ? (g.r2>g.r1 ? cellValue(g.r1+1, g.c1) : null) : (g.c2>g.c1 ? cellValue(g.r1, g.c1+1) : null);
+  if(second!=null && toNum(first)!=null && toNum(second)!=null) step = niceNum(toNum(second)-toNum(first));
+  $('srStep').value = String(step || 1);
+  $('srStop').value = '';
+  $('srMsg').textContent = fromHandle ? T('mFillAsk') : ''; $('srMsg').style.display = fromHandle ? 'block' : 'none';
+  $('dlgSeries').showModal();
+  (fromHandle ? $('srStop') : $('srStart')).focus();
+}
+$('shSeries').onclick = ()=> openSeries(false);
+$('srCancel').onclick = ()=> $('dlgSeries').close();
+$('srStop').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); $('srOk').click(); } });
+$('srOk').onclick = ()=>{
+  const g = selRange();
+  const vert = $('srDir').value==='col', type = $('srType').value;
+  const stepN = toNum($('srStep').value), stopTxt = $('srStop').value.trim();
+  const startTxt = $('srStart').value.trim();
+  let startN, dm=null;
+  if(type==='date'){ dm = startTxt.match(DATE_RE); if(!dm){ msg(T('mSeriesBad')); return; } startN = Date.UTC(+dm[1],+dm[3]-1,+dm[4]); }
+  else startN = toNum(startTxt);
+  if(startN==null || stepN==null || stepN===0){ msg(T('mSeriesBad')); return; }
+  let stopN = null;
+  if(stopTxt){
+    if(type==='date'){ const sm=stopTxt.match(DATE_RE); if(!sm){ msg(T('mSeriesBad')); return; } stopN=Date.UTC(+sm[1],+sm[3]-1,+sm[4]); }
+    else { stopN = toNum(stopTxt); if(stopN==null){ msg(T('mSeriesBad')); return; } }
+  }
+  const span = vert ? g.r2-g.r1+1 : g.c2-g.c1+1;
+  if(stopN==null && span<2){ msg(T('mSeriesNeedStop')); return; }
+  const limit = stopN!=null ? 10000 : span;
+  const vals = [];
+  for(let k=0; k<limit; k++){
+    let v;
+    if(type==='grow') v = startN * Math.pow(stepN, k);
+    else if(type==='date') v = startN + stepN*k*86400000;
+    else v = startN + stepN*k;
+    if(stopN!=null){
+      const up = (type==='grow') ? (Math.abs(stepN)>=1) : stepN>0;
+      if(up ? v>stopN+1e-9 : v<stopN-1e-9) break;
+    }
+    if(type==='date'){
+      const d=new Date(v), sep=dm[2], p=x=>String(x).padStart(2,'0');
+      vals.push(d.getUTCFullYear()+sep+p(d.getUTCMonth()+1)+sep+p(d.getUTCDate()));
+    } else vals.push(niceNum(v));
+  }
+  if(!vals.length){ msg(T('mSeriesBad')); return; }
+  $('dlgSeries').close();
+  pushUndo();
+  const lines = vert ? [g.c1, g.c2] : [g.r1, g.r2];
+  growTo(vert ? g.r1+vals.length : shRows, vert ? shCols : g.c1+vals.length);
+  beginBatch();
+  for(let L=lines[0]; L<=lines[1]; L++){
+    vals.forEach((v,k)=>{ const r = vert ? g.r1+k : L, c = vert ? L : g.c1+k; setCellRaw(r,c,v); shLive.add(cellKey(r,c)); });
+  }
+  endBatch();
+  ancR=g.r1; ancC=g.c1;
+  selR = vert ? g.r1+vals.length-1 : g.r2; selC = vert ? g.c2 : g.c1+vals.length-1;
+  renderSheet();
+  msg(T('mSeriesDone').replace('{n}', vals.length*(lines[1]-lines[0]+1)));
+};
+
+/* ── 열 너비 자동 맞춤 ── */
+function autoFitCols(ca, cb){
+  if(cb==null){
+    const g = selRange();
+    if(g.r1===0 && g.r2===shRows-1 && ca>=g.c1 && ca<=g.c2){ ca=g.c1; cb=g.c2; } else cb=ca;
+  }
+  const cx = document.createElement('canvas').getContext('2d');
+  pushUndo();
+  for(let c=ca; c<=cb; c++){
+    let w = 40;
+    for(let r=0; r<shRows; r++){
+      if(shHidden.has(r) || shData[r][c]==='' || shData[r][c]==null) continue;
+      const st = shStyle[cellKey(r,c)] || {};
+      cx.font = `${st.bold?'700 ':''}${st.italic?'italic ':''}${st.fs ? st.fs+'pt' : '13px'} 'Segoe UI','Malgun Gothic',sans-serif`;
+      w = Math.max(w, cx.measureText(cellDisplay(r,c)).width + 16 + (shFilter && r===shFilter.r ? 20 : 0));
+    }
+    shColW[c] = Math.min(640, Math.ceil(w));
+  }
+  renderSheet(); msg(T('mAutoFit'));
+}
+
+/* ── 서식: 줄 바꿈 · 글자 크기 · 테두리 · 표시 형식 · 함수 ── */
+$('shWrap').onclick = ()=> applyStyle('wrap');
+$('shFontSize').onchange = e=>{
+  const v = e.target.value; e.target.value='_';
+  if(v==='_') return;
+  applyStyle('fs', v==='' ? null : +v);
+};
+function applyBorder(kind){
+  const {r1,c1,r2,c2} = selRange();
+  pushUndo();
+  const set=(r,c,side,w)=>{
+    if(r<0||c<0||r>=shRows||c>=shCols) return;
+    const k=cellKey(r,c); shLive.add(k);
+    const st = shStyle[k] = shStyle[k] || {};
+    if(w) st[side]=w; else delete st[side];
+  };
+  /* 표 테두리는 이웃 칸과 겹치므로 맞닿은 쪽도 함께 지정해야 확실히 보입니다 */
+  const top=(r,c,w)=>{ set(r,c,'bt',w); set(r-1,c,'bb',w); };
+  const bot=(r,c,w)=>{ set(r,c,'bb',w); set(r+1,c,'bt',w); };
+  const lef=(r,c,w)=>{ set(r,c,'bl',w); set(r,c-1,'br',w); };
+  const rig=(r,c,w)=>{ set(r,c,'br',w); set(r,c+1,'bl',w); };
+  if(kind==='all' || kind==='none'){
+    const w = kind==='all' ? 1 : 0;
+    for(let r=r1;r<=r2;r++) for(let c=c1;c<=c2;c++){ top(r,c,w); bot(r,c,w); lef(r,c,w); rig(r,c,w); }
+  } else if(kind==='outer' || kind==='thick'){
+    const w = kind==='thick' ? 2 : 1;
+    for(let c=c1;c<=c2;c++){ top(r1,c,w); bot(r2,c,w); }
+    for(let r=r1;r<=r2;r++){ lef(r,c1,w); rig(r,c2,w); }
+  } else if(kind==='bottom' || kind==='dbottom'){
+    for(let c=c1;c<=c2;c++) bot(r2,c, kind==='dbottom' ? 3 : 1);
+  }
+  recalcRender();
+}
+$('shBorder').onchange = e=>{ const v=e.target.value; e.target.value='_'; if(v!=='_') applyBorder(v); };
+$('shNumFmt').onchange = e=>{
+  const v = e.target.value; e.target.value='_';
+  if(v==='_') return;
+  applyNumFmt(st=>{
+    delete st.nf; delete st.dec; st.comma=false; st.pct=false;
+    if(v==='num'){ st.comma=true; st.dec=0; }
+    else if(v==='pct'){ st.pct=true; st.dec=0; }
+    else if(v==='krw' || v==='usd' || v==='date') st.nf=v;
+  });
+};
+$('shFunc').onchange = e=>{
+  const fn = e.target.value; e.target.value='';
+  if(!fn || !sheetReady) return;
+  const g = selRange();
+  const agg = ['SUM','AVERAGE','COUNT','COUNTA','MAX','MIN'].includes(fn);
+  /* 합계류는 범위를 골라 두었으면 자동 합계처럼 바로 넣고, 아니면 =함수( 로 입력을 시작 */
+  if(agg && (g.r1!==g.r2 || g.c1!==g.c2) && insertAgg(fn)) return;
+  setSel(g.r1, g.c1, false);
+  startEdit(selR, selC, '='+fn+'(');
+};
 
 /* URL의 ?lang=en / ?lang=ko를 최우선 적용하고, 없으면 브라우저 기본 언어를 따름 */
 const requestedLang = new URLSearchParams(window.location.search).get('lang');
